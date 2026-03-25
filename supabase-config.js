@@ -1,4 +1,4 @@
 window.SUPABASE_CONFIG = {
-  url: 'https://dlybhuneuwukkvyfrmmh.supabase.co',
-  anonKey: 'sb_publishable_DuLGF5xzQ-cYUP-L4kg41A_qW_dbncR',
+  url: 'YOUR_SUPABASE_URL',
+  anonKey: 'YOUR_SUPABASE_PUBLISHABLE_KEY',
 };

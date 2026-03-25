@@ -198,6 +198,9 @@
   .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   .auth-note{font-size:12px;color:var(--text3);line-height:1.7;margin-top:10px;}
+  .auth-hero{margin-bottom:14px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,rgba(245,200,66,0.10),rgba(245,200,66,0.03));border:1px solid rgba(245,200,66,0.18);}
+  .auth-hero-title{font-size:15px;font-weight:700;color:var(--gold);margin-bottom:6px;}
+  .auth-hero-text{font-size:12px;color:var(--text2);line-height:1.7;}
   .auth-mini{font-size:11px;color:var(--text3);}
   .auth-link-btn{background:none;border:none;padding:0;color:var(--gold);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
   .auth-link-btn:hover{text-decoration:underline;}
@@ -221,13 +224,13 @@
 </div>
 
 <nav class="nav">
-  <button class="nav-btn active" onclick="showPage('page-add',this)"><span class="nav-icon">✍️</span>번호입력</button>
-  <button class="nav-btn" onclick="showPage('page-tickets',this)"><span class="nav-icon">🎫</span>내 티켓</button>
-  <button class="nav-btn" onclick="showPage('page-prob',this)"><span class="nav-icon">📊</span>확률분석</button>
+  <button id="nav-add" class="nav-btn" onclick="showPage('page-add',this)"><span class="nav-icon">✍️</span>번호입력</button>
+  <button id="nav-tickets" class="nav-btn active" onclick="showPage('page-tickets',this)"><span class="nav-icon">🎫</span>내 티켓</button>
+  <button id="nav-prob" class="nav-btn" onclick="showPage('page-prob',this)"><span class="nav-icon">📊</span>확률분석</button>
 </nav>
 
 <!-- PAGE 1 -->
-<div id="page-add" class="page active">
+<div id="page-add" class="page">
   <div class="card">
     <div class="card-title">🔢 번호 선택 (6개)</div>
     <div class="ball-grid" id="ball-grid"></div>
@@ -243,10 +246,10 @@
 </div>
 
 <!-- PAGE 2 -->
-<div id="page-tickets" class="page">
+<div id="page-tickets" class="page active">
 
   <div class="card auth-card">
-    <div class="card-title">☁️ 로그인 · 클라우드 저장</div>
+    <div class="card-title">🔐 로그인 후 시작</div>
     <div class="auth-status-row">
       <div class="auth-status-main">
         <span class="auth-dot off" id="auth-dot"></span>
@@ -256,10 +259,14 @@
     </div>
 
     <div id="auth-config-warning" class="config-box auth-hidden">
-      Supabase 연결 전이에요. <code>supabase-config.js</code>에 프로젝트 URL과 anon key를 입력하면 로그인과 클라우드 저장이 켜집니다.
+      Supabase 연결 전이에요. <code>supabase-config.js</code>에 프로젝트 URL과 publishable key를 입력하면 로그인과 클라우드 저장이 켜집니다.
     </div>
 
     <div id="auth-logged-out">
+      <div class="auth-hero">
+        <div class="auth-hero-title">먼저 로그인하고 시작하세요</div>
+        <div class="auth-hero-text">티켓 저장, 불러오기, 확률분석까지 계정 기준으로 이어서 사용할 수 있어요.</div>
+      </div>
       <div class="auth-grid">
         <div class="form-group" style="margin-bottom:10px"><label class="form-label">이메일</label><input type="email" class="form-input" id="auth-email" placeholder="you@example.com"></div>
         <div class="form-group" style="margin-bottom:10px"><label class="form-label">비밀번호</label><input type="password" class="form-input" id="auth-password" placeholder="8자 이상"></div>
@@ -267,9 +274,10 @@
       <div class="auth-actions">
         <button class="btn btn-gold" style="font-size:12px;padding:10px 14px" onclick="signInWithEmail()">로그인</button>
         <button class="btn btn-outline" style="font-size:12px;padding:10px 14px" onclick="signUpWithEmail()">회원가입</button>
+        <button class="auth-link-btn" onclick="resendSignupEmail()">인증 메일 다시 보내기</button>
         <button class="auth-link-btn" onclick="sendPasswordReset()">비밀번호 재설정</button>
       </div>
-      <div class="auth-note">로그인하면 티켓이 계정에 저장되어 다른 기기·브라우저에서도 같은 데이터를 불러올 수 있어요.</div>
+      <div class="auth-note">회원가입 후 인증 메일을 확인한 뒤 로그인하면, 어느 기기나 브라우저에서도 같은 티켓을 이어서 볼 수 있어요.</div>
     </div>
 
     <div id="auth-logged-in" class="auth-hidden">
@@ -283,6 +291,7 @@
     </div>
   </div>
 
+  <div id="tickets-shell">
   <div class="tickets-toolbar">
     <span class="ticket-count-badge" id="ticket-count-badge">총 0개</span>
     <button class="btn btn-danger" style="font-size:12px;padding:8px 12px" onclick="askDeleteAll()">전체 삭제</button>
@@ -298,6 +307,7 @@
   </div>
   <div id="tickets-list"></div>
   <div id="pagination" class="pagination"></div>
+  </div>
 </div>
 
 <!-- PAGE 3 -->
@@ -495,6 +505,45 @@ async function initSupabaseAuth() {
   updateAuthUI();
 }
 
+function getAuthRedirectUrl() {
+  return location.origin + location.pathname;
+}
+
+function forceOpenLogin(silent = false) {
+  const ticketsBtn = document.getElementById('nav-tickets');
+  const ticketsPage = document.getElementById('page-tickets');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  ticketsPage?.classList.add('active');
+  ticketsBtn?.classList.add('active');
+  if (!silent) showToast('먼저 로그인해주세요');
+}
+
+function isAlreadyRegisteredError(message = '') {
+  return /already registered|already been registered|User already registered|already exists/i.test(message || '');
+}
+
+function isEmailConfirmError(message = '') {
+  return /Email not confirmed|email_not_confirmed|confirm your email|인증/i.test(message || '');
+}
+
+async function resendSignupEmail(fromExistingFlow = false) {
+  if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return false; }
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { showToast('이메일을 먼저 입력해주세요'); return false; }
+  const { error } = await supabaseClient.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: getAuthRedirectUrl() }
+  });
+  if (error) {
+    showToast(fromExistingFlow ? '인증 메일 재전송에 실패했어요' : error.message);
+    return false;
+  }
+  showToast(fromExistingFlow ? '기존 계정으로 인증 메일을 다시 보냈어요' : '인증 메일을 다시 보냈어요');
+  return true;
+}
+
 function updateAuthUI() {
   const loggedIn = !!authUser;
   const dot = document.getElementById('auth-dot');
@@ -503,16 +552,19 @@ function updateAuthUI() {
   const inBox = document.getElementById('auth-logged-in');
   const outBox = document.getElementById('auth-logged-out');
   const emailEl = document.getElementById('auth-user-email');
+  const ticketsShell = document.getElementById('tickets-shell');
   if (dot) dot.className = `auth-dot ${loggedIn ? 'on' : 'off'}`;
   if (statusText) statusText.textContent = loggedIn
     ? '로그인 상태 · 모든 기기에서 같은 티켓 사용'
-    : '로그아웃 상태 · 이 기기 브라우저에만 저장';
+    : '로그인 필요 · 서비스를 시작하려면 먼저 로그인하세요';
   if (syncText) syncText.textContent = !hasSupabaseConfig()
     ? 'Supabase 설정 필요'
-    : (loggedIn ? '클라우드 동기화 켜짐' : '로컬 모드');
+    : (loggedIn ? '클라우드 동기화 켜짐' : '로그인 대기');
   if (inBox) inBox.classList.toggle('auth-hidden', !loggedIn);
   if (outBox) outBox.classList.toggle('auth-hidden', loggedIn);
+  if (ticketsShell) ticketsShell.style.display = loggedIn ? '' : 'none';
   if (emailEl) emailEl.textContent = authUser?.email || '-';
+  if (!loggedIn) forceOpenLogin(true);
 }
 
 async function signUpWithEmail() {
@@ -521,13 +573,26 @@ async function signUpWithEmail() {
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
   if (password.length < 8) { showToast('비밀번호는 8자 이상이어야 해요'); return; }
-  const { error } = await supabaseClient.auth.signUp({
+  const redirectTo = getAuthRedirectUrl();
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: location.origin + location.pathname }
+    options: { emailRedirectTo: redirectTo }
   });
-  if (error) { showToast(error.message); return; }
-  showToast('가입 메일을 보냈어요. 메일 인증 후 로그인해주세요');
+  if (error) {
+    if (isAlreadyRegisteredError(error.message)) {
+      await resendSignupEmail(true);
+      return;
+    }
+    showToast(error.message);
+    return;
+  }
+  const identities = data?.user?.identities || [];
+  if (!data?.session && identities.length === 0) {
+    await resendSignupEmail(true);
+    return;
+  }
+  showToast('가입 메일을 보냈어요. 인증 후 로그인해주세요');
 }
 
 async function signInWithEmail() {
@@ -536,7 +601,14 @@ async function signInWithEmail() {
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) { showToast(error.message); return; }
+  if (error) {
+    if (isEmailConfirmError(error.message)) {
+      await resendSignupEmail(true);
+      return;
+    }
+    showToast(error.message);
+    return;
+  }
   showToast('로그인됐어요');
 }
 
@@ -553,7 +625,7 @@ async function sendPasswordReset() {
   const email = document.getElementById('auth-email').value.trim();
   if (!email) { showToast('비밀번호 재설정용 이메일을 입력해주세요'); return; }
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + location.pathname
+    redirectTo: getAuthRedirectUrl()
   });
   if (error) { showToast(error.message); return; }
   showToast('비밀번호 재설정 메일을 보냈어요');
@@ -846,14 +918,14 @@ function updateLoadProgress(text) {
 // ─────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────
-function init() {
+async function init() {
   buildBallGrid();
   const today = new Date().toISOString().split('T')[0];
   ['save-date', 'win-date', 'buy-date'].forEach(id =>
     document.getElementById(id).value = today
   );
   updateAuthUI();
-  initSupabaseAuth();
+  await initSupabaseAuth();
   renderTickets();
   loadStatsFromCache();
   if (!(statsCache.freq && statsCache.totalDraws > 0)) {
@@ -1606,6 +1678,10 @@ function miniball(n, size) {
 }
 
 function showPage(id, btn) {
+  if (!authUser && id !== 'page-tickets') {
+    forceOpenLogin();
+    return;
+  }
   const prevActive = document.querySelector('.page.active');
   const prevId = prevActive ? prevActive.id : '';
   if (prevId === 'page-prob' && id !== 'page-prob') resetProbAnalysis();

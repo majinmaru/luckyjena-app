@@ -212,6 +212,12 @@
     .auth-grid{grid-template-columns:1fr;}
     .auth-actions.primary .btn{flex:auto;width:100%;}
   }
+
+  .auth-simple-user{display:flex;flex-direction:column;gap:4px;padding:4px 0 10px;}
+  .auth-simple-label{font-size:11px;color:var(--text3);}
+  .auth-simple-email{font-size:14px;color:var(--text);word-break:break-all;}
+  .auth-actions-simple{margin-top:2px;gap:8px;}
+
 </style>
 </head>
 <body>
@@ -261,11 +267,6 @@
     </div>
 
     <div id="auth-logged-out">
-      <div class="auth-state-box" id="auth-state-box">
-        <div class="auth-state-label"><span class="auth-dot off" id="auth-dot"></span><span id="auth-status-text">로그인 필요</span></div>
-        <div class="auth-state-title">로그인 후 바로 시작할 수 있어요</div>
-        <div class="auth-state-desc">번호 저장과 분석은 로그인한 계정에 자동 저장됩니다.</div>
-      </div>
       <div class="auth-grid">
         <div class="form-group" style="margin-bottom:10px"><label class="form-label">이메일</label><input type="email" class="form-input" id="auth-email" placeholder="you@example.com"></div>
         <div class="form-group" style="margin-bottom:10px"><label class="form-label">비밀번호</label><input type="password" class="form-input" id="auth-password" placeholder="8자 이상"></div>
@@ -287,14 +288,13 @@
     </div>
 
     <div id="auth-logged-in" class="auth-hidden">
-      <div class="auth-state-box success" id="auth-state-box-logged-in">
-        <div class="auth-state-label"><span class="auth-dot on"></span><span id="auth-sync-text">로그인 완료</span></div>
-        <div class="auth-state-title">로그인이 완료됐어요</div>
-        <div class="auth-state-desc auth-email" id="auth-user-email">-</div>
+      <div class="auth-simple-user" id="auth-state-box-logged-in">
+        <span class="auth-simple-label">로그인 계정</span>
+        <div class="auth-simple-email" id="auth-user-email">-</div>
       </div>
-      <div class="auth-actions primary">
-        <button class="btn btn-gold" style="font-size:12px;padding:10px 14px" onclick="goToAddPage()">번호 입력 시작</button>
-        <button class="btn btn-danger" style="font-size:12px;padding:10px 14px" onclick="signOutUser()">로그아웃</button>
+      <div class="auth-actions primary auth-actions-simple">
+        <button class="btn btn-outline" style="font-size:12px;padding:9px 12px" onclick="goToAddPage()">번호 입력</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:9px 12px" onclick="signOutUser()">로그아웃</button>
       </div>
     </div>
   </div>
@@ -722,7 +722,6 @@ function updateAuthUI() {
   const loggedIn = !!authUser;
   const dot = document.getElementById('auth-dot');
   const statusText = document.getElementById('auth-status-text');
-  const syncText = document.getElementById('auth-sync-text');
   const inBox = document.getElementById('auth-logged-in');
   const outBox = document.getElementById('auth-logged-out');
   const emailEl = document.getElementById('auth-user-email');
@@ -731,7 +730,6 @@ function updateAuthUI() {
 
   if (dot) dot.className = `auth-dot ${loggedIn ? 'on' : 'off'}`;
   if (statusText) statusText.textContent = loggedIn ? '로그인 완료' : '로그인 필요';
-  if (syncText) syncText.textContent = loggedIn ? '로그인 완료' : '로그인 필요';
   if (inBox) inBox.classList.toggle('auth-hidden', !loggedIn);
   if (outBox) outBox.classList.toggle('auth-hidden', loggedIn);
   if (ticketsShell) ticketsShell.style.display = loggedIn ? '' : 'none';
@@ -808,13 +806,27 @@ async function signInWithEmail() {
   hideResendPrompt();
   updateAuthUI();
   showToast('로그인 완료');
-  const result = await hydrateTicketsFromCloud({ source: 'signin', silent: true });
+  let result = await hydrateTicketsFromCloud({ source: 'signin', silent: true });
+  if (result?.status === 'error') {
+    console.error('hydrateTicketsFromCloud after sign-in failed:', result.error);
+    try {
+      const retryTickets = await fetchCloudTickets();
+      tickets = retryTickets;
+      persistTickets({ skipCloud: true });
+      renderTickets();
+      renderProbDropdown();
+      result = { status: retryTickets.length ? 'loaded' : 'empty', count: retryTickets.length };
+    } catch (retryError) {
+      console.error('fetchCloudTickets retry after sign-in failed:', retryError);
+      result = { status: 'error', count: 0, error: retryError };
+    }
+  }
+
   if (result?.status === 'loaded') {
     showToast(`티켓 ${result.count}개를 불러왔어요`);
   } else if (result?.status === 'empty') {
     showToast('저장된 티켓이 없어요');
-  } else if (result?.status === 'error') {
-    console.error('hydrateTicketsFromCloud after sign-in failed:', result.error);
+  } else {
     showToast('티켓을 불러오지 못했어요');
   }
 }

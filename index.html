@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>행운은 내 손으로 — 로또 티켓 기록</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a3d;
+    --gold:#f5c842;--gold2:#e8a800;--red:#ff4757;--green:#2ed573;
+    --text:#e8e8f0;--text2:#8888aa;--text3:#555570;
+    --radius:16px;--shadow:0 8px 32px rgba(0,0,0,0.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  button,a,input,select,textarea{touch-action:manipulation;}
+  @media (max-width:768px){
+    input,select,textarea{font-size:16px !important;}
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;min-height:100vh;padding-bottom:80px;}
+
+  .header{background:linear-gradient(135deg,#0a0a0f 0%,#1a1020 50%,#0a0a0f 100%);border-bottom:1px solid var(--border);padding:28px 20px 20px;text-align:center;position:relative;overflow:hidden;}
+  .header::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:300px;height:120px;background:radial-gradient(ellipse,rgba(245,200,66,0.15) 0%,transparent 70%);pointer-events:none;}
+  .header-title{font-family:'Black Han Sans',sans-serif;font-size:28px;letter-spacing:2px;color:var(--gold);text-shadow:0 0 20px rgba(245,200,66,0.4);}
+  .header-sub{font-size:12px;color:var(--text3);margin-top:4px;letter-spacing:4px;text-transform:uppercase;}
+
+  .nav{display:flex;background:var(--surface);border-bottom:1px solid var(--border);}
+  .nav-btn{flex:1;padding:14px 8px;background:none;border:none;color:var(--text3);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+  .nav-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .nav-btn .nav-icon{display:block;font-size:18px;margin-bottom:3px;}
+
+  .page{display:none;padding:20px;max-width:600px;margin:0 auto;}
+  .page.active{display:block;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .card-title{font-family:'Black Han Sans',sans-serif;font-size:16px;color:var(--gold);margin-bottom:16px;letter-spacing:1px;}
+
+  .ball-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:16px;}
+  .ball{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text3);cursor:pointer;transition:all .15s;user-select:none;}
+  .ball:hover{border-color:var(--gold);color:var(--gold);}
+  .ball.selected{background:var(--gold);border-color:var(--gold2);color:#1a1000;box-shadow:0 0 12px rgba(245,200,66,0.5);transform:scale(1.05);}
+  .ball.color-1{background:#fbc400;border-color:#e8a800;color:#1a1000;}
+  .ball.color-2{background:#69c8f2;border-color:#4ab0e0;color:#0a1a2a;}
+  .ball.color-3{background:#ff7272;border-color:#e05555;color:#1a0000;}
+  .ball.color-4{background:#aaaaaa;border-color:#888;color:#1a1a1a;}
+  .ball.color-5{background:#b0d840;border-color:#8cba20;color:#1a2800;}
+
+  .selected-row{display:flex;gap:8px;min-height:44px;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--surface2);border-radius:12px;border:1px dashed var(--border);}
+  .selected-ball{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;flex-shrink:0;}
+  .selected-count{margin-left:auto;font-size:12px;color:var(--text3);}
+
+  .btn{padding:12px 20px;border-radius:10px;border:none;font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;}
+  .btn-gold{background:var(--gold);color:#1a1000;}
+  .btn-gold:hover{background:var(--gold2);}
+  .btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border);}
+  .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(255,71,87,0.3);}
+  .btn-danger:hover{background:rgba(255,71,87,0.1);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .tickets-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .ticket-count-badge{font-size:12px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;white-space:nowrap;flex-shrink:0;}
+  .sort-select{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 28px 8px 12px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;flex:1;min-width:0;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555570'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+  .sort-select:focus{outline:none;border-color:var(--gold);}
+
+  .ticket{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;transition:border-color .2s;}
+  .ticket:hover{border-color:rgba(245,200,66,0.3);}
+  .ticket.expanded{border-color:rgba(245,200,66,0.6);}
+  .ticket-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--surface2);gap:10px;}
+  .ticket-nums{display:flex;gap:5px;flex-wrap:wrap;flex:1;}
+  .mini-ball{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;flex-shrink:0;}
+  .ticket-meta{font-size:11px;color:var(--text3);text-align:right;flex-shrink:0;}
+  .ticket-body{padding:14px 16px;}
+  .history-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface2);font-size:13px;gap:8px;}
+  .history-row:last-child{border-bottom:none;}
+  .badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;white-space:nowrap;}
+  .badge-count{background:rgba(245,200,66,0.15);color:var(--gold);border:1px solid rgba(245,200,66,0.3);}
+  .badge-won{background:rgba(46,213,115,0.15);color:var(--green);border:1px solid rgba(46,213,115,0.3);}
+  .win-strip{padding:8px 16px;display:flex;gap:8px;flex-wrap:wrap;background:rgba(245,200,66,0.05);border-top:1px solid rgba(245,200,66,0.15);}
+  .win-tag{font-size:11px;color:var(--gold);}
+  .ticket-actions{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;}
+
+  .pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;flex-wrap:wrap;}
+  .page-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Space Mono',monospace;font-size:13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;}
+  .page-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold);}
+  .page-btn.active{background:var(--gold);color:#1a1000;border-color:var(--gold);font-weight:700;}
+  .page-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+  /* PROB PAGE */
+  /* ── PROB PAGE ── */
+  .prob-select-box{position:relative;margin-bottom:0;}
+  .prob-input-wrap{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:0 14px;gap:8px;transition:border-color .2s;}
+  .prob-input-wrap:focus-within{border-color:var(--gold);}
+  .prob-input-wrap input{flex:1;background:none;border:none;outline:none;padding:13px 0;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;min-width:0;}
+  .prob-input-wrap input::placeholder{color:var(--text3);}
+  .prob-input-clear{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;line-height:1;display:none;}
+  .prob-input-clear.visible{display:block;}
+  .prob-input-clear:hover{color:var(--text);}
+  .prob-chevron{color:var(--text3);font-size:14px;pointer-events:none;transition:transform .2s;}
+  .prob-chevron.open{transform:rotate(180deg);}
+  .prob-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:60;max-height:320px;overflow-y:auto;box-shadow:var(--shadow);}
+  .prob-dropdown.open{display:block;}
+  .prob-dd-item{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--surface2);transition:background .1s;}
+  .prob-dd-item:last-child{border-bottom:none;}
+  .prob-dd-item:hover,.prob-dd-item.selected{background:var(--surface2);}
+  .prob-dd-footer{padding:10px 14px;text-align:center;font-size:12px;color:var(--text3);border-top:1px solid var(--surface2);cursor:pointer;}
+  .prob-dd-footer:hover{color:var(--gold);}
+  .prob-dd-empty{padding:20px;text-align:center;color:var(--text3);font-size:13px;}
+  .prob-selected-ticket{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--surface2);border-radius:10px;margin-top:12px;flex-wrap:wrap;}
+  .prob-result-area{margin-top:16px;}
+  /* 데이터 없음 안내 박스 */
+  .no-data-box{background:var(--surface2);border:1px dashed var(--border);border-radius:12px;padding:24px 20px;text-align:center;margin-top:12px;}
+  .no-data-icon{font-size:32px;margin-bottom:10px;}
+  .no-data-msg{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;}
+  /* 데이터 상태바 */
+  .data-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;font-size:12px;flex-wrap:wrap;}
+  .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .status-dot.ok{background:var(--green);}
+  .status-dot.warn{background:var(--gold);}
+  .status-dot.err{background:var(--red);}
+  .status-dot.loading{background:var(--text3);animation:pulse 1s infinite;}
+  .btn-load{background:var(--gold);border:none;border-radius:8px;padding:8px 16px;color:#1a1000;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+  .btn-load:hover{background:var(--gold2);}
+  .btn-load:disabled{opacity:.5;cursor:not-allowed;}
+  .prob-display{background:linear-gradient(135deg,#1a1a26,#12121a);border:1px solid rgba(245,200,66,0.3);border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;}
+  .prob-num{font-family:'Space Mono',monospace;font-size:28px;color:var(--gold);font-weight:700;text-shadow:0 0 20px rgba(245,200,66,0.3);}
+  .prob-label{font-size:12px;color:var(--text3);margin-top:4px;}
+  .prob-history-item{padding:10px 14px;background:var(--surface2);border-radius:10px;margin-bottom:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .algo-chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .algo-chip{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;transition:all .2s;}
+  .algo-chip.active{border-color:var(--gold);background:rgba(245,200,66,0.12);color:var(--gold);}
+  .algo-chip:hover{border-color:var(--gold);color:var(--gold);}
+  .algo-card-title{font-size:12px;color:var(--text3);margin-bottom:10px;}
+  .mini-list-row{padding:10px 14px;background:var(--surface2);border-radius:10px;margin-bottom:8px;font-size:12px;line-height:1.7;}
+  .gap-formula{font-family:'Space Mono',monospace;color:var(--gold);font-size:12px;line-height:1.8;word-break:break-word;}
+  .bar-row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;padding:9px 0;}
+  .bar-track{height:8px;background:#0f0f17;border-radius:999px;overflow:hidden;border:1px solid var(--border);}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:999px;}
+
+  /* DATA STATUS BAR */
+  .data-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;font-size:12px;flex-wrap:wrap;}
+
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .status-info{display:flex;align-items:center;gap:8px;color:var(--text2);}
+  .btn-refresh{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;color:var(--text3);font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+  .btn-refresh:hover{border-color:var(--gold);color:var(--gold);}
+
+  /* LOADING OVERLAY */
+  .load-overlay{position:fixed;inset:0;background:rgba(10,10,15,0.92);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+  .load-overlay.hidden{display:none;}
+  .load-spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .load-text{font-size:14px;color:var(--text2);text-align:center;line-height:1.8;}
+  .load-progress{font-family:'Space Mono',monospace;font-size:20px;color:var(--gold);}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--text3);}
+  .empty-icon{font-size:48px;margin-bottom:12px;}
+  .empty-text{font-size:14px;line-height:1.8;}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-sizing:border-box;overflow-x:hidden;}
+  .modal-title{font-family:'Black Han Sans',sans-serif;font-size:18px;color:var(--gold);margin-bottom:20px;}
+
+  .form-group{margin-bottom:16px;}
+  .form-label{font-size:12px;color:var(--text3);margin-bottom:8px;display:block;letter-spacing:1px;}
+  .form-input{width:100%;max-width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;}
+  .form-input:focus{outline:none;border-color:var(--gold);}
+  select.form-input{appearance:none;}
+  input[type="date"].form-input{-webkit-appearance:none;appearance:none;min-width:0;}
+
+  .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:150;align-items:center;justify-content:center;padding:20px;}
+  .confirm-overlay.open{display:flex;}
+  .confirm-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:320px;text-align:center;}
+  .confirm-title{font-family:'Black Han Sans',sans-serif;font-size:18px;color:var(--red);margin-bottom:10px;}
+  .confirm-msg{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.7;}
+  .confirm-btns{display:flex;gap:10px;justify-content:center;}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;color:var(--text);z-index:200;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .divider{height:1px;background:var(--border);margin:16px 0;}
+  .section-label{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+  .expand-btn{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;padding:6px 0;display:flex;align-items:center;gap:4px;}
+  .expand-btn:hover{color:var(--gold);}
+  .hidden{display:none;}
+  .expand-icon{transition:transform .2s;display:inline-block;}
+  .expand-icon.open{transform:rotate(180deg);}
+
+  .site-footer{max-width:600px;margin:6px auto 0;padding:0 20px 24px;text-align:center;color:var(--text3);font-size:11px;letter-spacing:.2px;}
+
+  .auth-card{margin-bottom:16px;}
+  .auth-status-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap;}
+  .auth-status-main{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px;}
+  .auth-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);flex-shrink:0;}
+  .auth-dot.on{background:var(--green);}
+  .auth-dot.off{background:var(--gold);}
+  .auth-email{font-size:12px;color:var(--gold);word-break:break-all;}
+  .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .auth-note{font-size:12px;color:var(--text3);line-height:1.7;margin-top:10px;}
+  .auth-mini{font-size:11px;color:var(--text3);}
+  .auth-link-btn{background:none;border:none;padding:0;color:var(--gold);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+  .auth-link-btn:hover{text-decoration:underline;}
+  .auth-hidden{display:none;}
+  .sync-badge{font-size:11px;color:var(--text3);}
+  .config-box{padding:12px 14px;background:rgba(255,71,87,0.08);border:1px solid rgba(255,71,87,0.25);border-radius:10px;color:var(--text2);font-size:12px;line-height:1.7;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="load-overlay hidden" id="load-overlay">
+  <div class="load-spinner"></div>
+  <div class="load-progress" id="load-progress"></div>
+  <div class="load-text" id="load-text">분석용 데이터를 불러오는 중이에요<br>처음 한 번만 잠깐 기다려 주세요</div>
+</div>
+
+<div class="header">
+  <div class="header-title">🍀 행운은 내 손으로</div>
+  <div class="header-sub">LOTTO TICKET RECORDER</div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('page-add',this)"><span class="nav-icon">✍️</span>번호입력</button>
+  <button class="nav-btn" onclick="showPage('page-tickets',this)"><span class="nav-icon">🎫</span>내 티켓</button>
+  <button class="nav-btn" onclick="showPage('page-prob',this)"><span class="nav-icon">📊</span>확률분석</button>
+</nav>
+
+<!-- PAGE 1 -->
+<div id="page-add" class="page active">
+  <div class="card">
+    <div class="card-title">🔢 번호 선택 (6개)</div>
+    <div class="ball-grid" id="ball-grid"></div>
+    <div class="selected-row" id="selected-row">
+      <span style="font-size:12px;color:var(--text3)">번호를 선택하세요</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="randomPick()">🎲 랜덤 추천</button>
+      <button class="btn btn-outline" onclick="clearSelection()">↺ 초기화</button>
+      <button class="btn btn-gold" onclick="openSaveModal()" style="margin-left:auto">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div id="page-tickets" class="page">
+
+  <div class="card auth-card">
+    <div class="card-title">☁️ 로그인 · 클라우드 저장</div>
+    <div class="auth-status-row">
+      <div class="auth-status-main">
+        <span class="auth-dot off" id="auth-dot"></span>
+        <span id="auth-status-text">로그아웃 상태 · 이 기기 브라우저에만 저장</span>
+      </div>
+      <span class="sync-badge" id="auth-sync-text">로컬 모드</span>
+    </div>
+
+    <div id="auth-config-warning" class="config-box auth-hidden">
+      Supabase 연결 전이에요. <code>supabase-config.js</code>에 프로젝트 URL과 anon key를 입력하면 로그인과 클라우드 저장이 켜집니다.
+    </div>
+
+    <div id="auth-logged-out">
+      <div class="auth-grid">
+        <div class="form-group" style="margin-bottom:10px"><label class="form-label">이메일</label><input type="email" class="form-input" id="auth-email" placeholder="you@example.com"></div>
+        <div class="form-group" style="margin-bottom:10px"><label class="form-label">비밀번호</label><input type="password" class="form-input" id="auth-password" placeholder="8자 이상"></div>
+      </div>
+      <div class="auth-actions">
+        <button class="btn btn-gold" style="font-size:12px;padding:10px 14px" onclick="signInWithEmail()">로그인</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:10px 14px" onclick="signUpWithEmail()">회원가입</button>
+        <button class="auth-link-btn" onclick="sendPasswordReset()">비밀번호 재설정</button>
+      </div>
+      <div class="auth-note">로그인하면 티켓이 계정에 저장되어 다른 기기·브라우저에서도 같은 데이터를 불러올 수 있어요.</div>
+    </div>
+
+    <div id="auth-logged-in" class="auth-hidden">
+      <div class="auth-email" id="auth-user-email">-</div>
+      <div class="auth-actions">
+        <button class="btn btn-outline" style="font-size:12px;padding:10px 14px" onclick="refreshTicketsFromCloud()">클라우드 다시 불러오기</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:10px 14px" onclick="mergeLocalTicketsToCloud(true)">이 기기 티켓 업로드</button>
+        <button class="btn btn-danger" style="font-size:12px;padding:10px 14px" onclick="signOutUser()">로그아웃</button>
+      </div>
+      <div class="auth-note">티켓 변경 내용은 로그인 상태에서 자동으로 클라우드와 동기화됩니다.</div>
+    </div>
+  </div>
+
+  <div class="tickets-toolbar">
+    <span class="ticket-count-badge" id="ticket-count-badge">총 0개</span>
+    <button class="btn btn-danger" style="font-size:12px;padding:8px 12px" onclick="askDeleteAll()">전체 삭제</button>
+    <select class="sort-select" id="sort-select" onchange="currentPage=1;renderTickets()">
+      <option value="recent-update">최근 업데이트순</option>
+      <option value="reg-newest">등록 최신순</option>
+      <option value="reg-oldest">등록 오래된 순</option>
+      <option value="wins-most">당첨 최다순</option>
+      <option value="wins-least">당첨 최소순</option>
+      <option value="win-date-newest">당첨일 최신순</option>
+      <option value="win-date-oldest">당첨일 오래된 순</option>
+    </select>
+  </div>
+  <div id="tickets-list"></div>
+  <div id="pagination" class="pagination"></div>
+</div>
+
+<!-- PAGE 3 -->
+<div id="page-prob" class="page">
+
+  <!-- 티켓 선택 카드 -->
+  <div class="card">
+    <div class="card-title">📊 당첨 확률 분석</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">분석할 티켓을 선택하세요</p>
+
+    <!-- 드롭다운 -->
+    <div class="prob-select-box" id="prob-wrap">
+      <div class="prob-input-wrap" onclick="onProbBoxClick()">
+        <input type="text" id="prob-input"
+          placeholder="번호로 검색하거나 클릭해서 선택..."
+          oninput="onProbInput(event)" autocomplete="off" readonly>
+        <button class="prob-input-clear" id="prob-clear" onclick="clearProbInput(event)">✕</button>
+        <span class="prob-chevron" id="prob-chevron">▼</span>
+      </div>
+      <div class="prob-dropdown" id="prob-dropdown"></div>
+    </div>
+
+    <!-- 선택된 티켓 미리보기 -->
+    <div id="prob-selected" style="display:none" class="prob-selected-ticket"></div>
+  </div>
+
+  <!-- 결과 영역 -->
+  <div id="prob-result-area" class="prob-result-area"></div>
+
+</div>
+
+<!-- MODALS -->
+<div class="modal-bg" id="save-modal">
+  <div class="modal">
+    <div class="modal-title">✅ 티켓 저장</div>
+    <div id="save-nums-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px"></div>
+    <div class="form-group"><label class="form-label">구매 일자</label><input type="date" class="form-input" id="save-date"></div>
+    <div class="form-group"><label class="form-label">메모 (선택)</label><input type="text" class="form-input" id="save-memo" placeholder="ex. 이번주엔 꼭!"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal('save-modal')">취소</button>
+      <button class="btn btn-gold" onclick="saveTicket()" style="margin-left:auto">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="win-modal">
+  <div class="modal">
+    <div class="modal-title">🏆 당첨 기록 추가</div>
+    <div id="win-nums-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px"></div>
+    <div class="form-group"><label class="form-label">당첨 일자</label><input type="date" class="form-input" id="win-date"></div>
+    <div class="form-group">
+      <label class="form-label">당첨 등수</label>
+      <select class="form-input" id="win-rank">
+        <option value="1">1등 🎉</option><option value="2">2등 🥈</option><option value="3">3등 🥉</option><option value="4">4등</option><option value="5" selected>5등</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal('win-modal')">취소</button>
+      <button class="btn btn-gold" onclick="addWin()" style="margin-left:auto">기록</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="buy-modal">
+  <div class="modal">
+    <div class="modal-title">🛒 구매 이력 추가</div>
+    <div id="buy-nums-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px"></div>
+    <div class="form-group"><label class="form-label">구매 일자</label><input type="date" class="form-input" id="buy-date"></div>
+    <div class="form-group"><label class="form-label">메모 (선택)</label><input type="text" class="form-input" id="buy-memo" placeholder="ex. 3회차 도전!"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal('buy-modal')">취소</button>
+      <button class="btn btn-gold" onclick="addBuy()" style="margin-left:auto">추가</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">🗑️ 티켓 삭제</div>
+    <div class="confirm-msg" id="confirm-msg">이 티켓을 삭제할까요?<br>삭제 후 복구할 수 없어요.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-outline" onclick="closeConfirm()">취소</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">삭제하기</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-bg" id="reset-modal">
+  <div class="modal">
+    <div class="modal-title">🔐 비밀번호 재설정</div>
+    <div class="form-group"><label class="form-label">새 비밀번호</label><input type="password" class="form-input" id="reset-password" placeholder="새 비밀번호"></div>
+    <div class="form-group"><label class="form-label">새 비밀번호 확인</label><input type="password" class="form-input" id="reset-password-confirm" placeholder="새 비밀번호 확인"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal('reset-modal')">취소</button>
+      <button class="btn btn-gold" onclick="updatePasswordFromRecovery()" style="margin-left:auto">변경</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer class="site-footer">© 2026 Jena. All rights reserved.</footer>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+<script>
+
+const DATA_BASE = './data';
+const CLOUD_TABLE = 'lotto_tickets_cloud';
+
+let supabaseClient = null;
+let authUser = null;
+let syncInFlight = false;
+let syncQueued = false;
+let suppressCloudSync = false;
+let resetMode = false;
+
+function getSupabaseConfig() {
+  return window.SUPABASE_CONFIG || { url: '', anonKey: '' };
+}
+function hasSupabaseConfig() {
+  const cfg = getSupabaseConfig();
+  return !!(cfg.url && cfg.anonKey);
+}
+function makeTicketId() {
+  return `ticket_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+}
+function ensureTicketShape(t, i = 0) {
+  const total = Array.isArray(tickets) ? tickets.length : 0;
+  return {
+    id: t.id || makeTicketId(),
+    nums: Array.isArray(t.nums) ? [...t.nums].map(Number).sort((a,b)=>a-b) : [],
+    purchases: Array.isArray(t.purchases) ? t.purchases.map(p => ({ date: p.date || '', memo: p.memo || '' })) : [],
+    wins: Array.isArray(t.wins) ? t.wins.map(w => ({ date: w.date || '', rank: Number(w.rank || 0) })) : [],
+    createdAt: t.createdAt || (Date.now() - (total - i) * 60000),
+    updatedAt: t.updatedAt || (Date.now() - (total - i) * 60000),
+  };
+}
+function ticketSignature(t) {
+  const nums = (t.nums || []).join(',');
+  const purchases = (t.purchases || []).map(p => `${p.date}|${p.memo || ''}`).sort().join('~');
+  const wins = (t.wins || []).map(w => `${w.date}|${w.rank}`).sort().join('~');
+  return `${nums}__${purchases}__${wins}`;
+}
+
+// ─────────────────────────────────────────
+//  TICKETS  (localStorage + Supabase)
+// ─────────────────────────────────────────
+let tickets = [];
+try { tickets = JSON.parse(localStorage.getItem('lotto_tickets') || '[]'); } catch(e) {}
+tickets = tickets.map((t, i) => ensureTicketShape(t, i));
+persistTickets({ skipCloud: true });
+
+function persistTickets(options = {}) {
+  localStorage.setItem('lotto_tickets', JSON.stringify(tickets));
+  if (!options.skipCloud) scheduleCloudSync();
+}
+
+
+async function initSupabaseAuth() {
+  const warning = document.getElementById('auth-config-warning');
+  if (!hasSupabaseConfig()) {
+    warning?.classList.remove('auth-hidden');
+    updateAuthUI();
+    return;
+  }
+  try {
+    const cfg = getSupabaseConfig();
+    supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+    const { data } = await supabaseClient.auth.getSession();
+    authUser = data.session?.user || null;
+    if (authUser) await hydrateTicketsFromCloud();
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      authUser = session?.user || null;
+      if (event === 'PASSWORD_RECOVERY') {
+        resetMode = true;
+        document.getElementById('reset-modal').classList.add('open');
+      }
+      if (event === 'SIGNED_IN' && authUser) {
+        await hydrateTicketsFromCloud();
+      }
+      if (event === 'SIGNED_OUT') {
+        resetMode = false;
+      }
+      updateAuthUI();
+    });
+  } catch (e) {
+    console.error(e);
+    showToast('Supabase 연결에 실패했어요');
+  }
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const loggedIn = !!authUser;
+  const dot = document.getElementById('auth-dot');
+  const statusText = document.getElementById('auth-status-text');
+  const syncText = document.getElementById('auth-sync-text');
+  const inBox = document.getElementById('auth-logged-in');
+  const outBox = document.getElementById('auth-logged-out');
+  const emailEl = document.getElementById('auth-user-email');
+  if (dot) dot.className = `auth-dot ${loggedIn ? 'on' : 'off'}`;
+  if (statusText) statusText.textContent = loggedIn
+    ? '로그인 상태 · 모든 기기에서 같은 티켓 사용'
+    : '로그아웃 상태 · 이 기기 브라우저에만 저장';
+  if (syncText) syncText.textContent = !hasSupabaseConfig()
+    ? 'Supabase 설정 필요'
+    : (loggedIn ? '클라우드 동기화 켜짐' : '로컬 모드');
+  if (inBox) inBox.classList.toggle('auth-hidden', !loggedIn);
+  if (outBox) outBox.classList.toggle('auth-hidden', loggedIn);
+  if (emailEl) emailEl.textContent = authUser?.email || '-';
+}
+
+async function signUpWithEmail() {
+  if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return; }
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
+  if (password.length < 8) { showToast('비밀번호는 8자 이상이어야 해요'); return; }
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: location.origin + location.pathname }
+  });
+  if (error) { showToast(error.message); return; }
+  showToast('가입 메일을 보냈어요. 메일 인증 후 로그인해주세요');
+}
+
+async function signInWithEmail() {
+  if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return; }
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { showToast(error.message); return; }
+  showToast('로그인됐어요');
+}
+
+async function signOutUser() {
+  if (!supabaseClient) return;
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) { showToast(error.message); return; }
+  showToast('로그아웃됐어요');
+  updateAuthUI();
+}
+
+async function sendPasswordReset() {
+  if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return; }
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { showToast('비밀번호 재설정용 이메일을 입력해주세요'); return; }
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname
+  });
+  if (error) { showToast(error.message); return; }
+  showToast('비밀번호 재설정 메일을 보냈어요');
+}
+
+async function updatePasswordFromRecovery() {
+  if (!supabaseClient) return;
+  const pw = document.getElementById('reset-password').value;
+  const confirm = document.getElementById('reset-password-confirm').value;
+  if (!pw || !confirm) { showToast('새 비밀번호를 입력해주세요'); return; }
+  if (pw.length < 8) { showToast('비밀번호는 8자 이상이어야 해요'); return; }
+  if (pw !== confirm) { showToast('비밀번호 확인이 일치하지 않아요'); return; }
+  const { error } = await supabaseClient.auth.updateUser({ password: pw });
+  if (error) { showToast(error.message); return; }
+  document.getElementById('reset-password').value = '';
+  document.getElementById('reset-password-confirm').value = '';
+  closeModal('reset-modal');
+  resetMode = false;
+  showToast('비밀번호가 변경됐어요');
+}
+
+function mergeTicketArrays(a, b) {
+  const map = new Map();
+  [...a, ...b].forEach((raw, idx) => {
+    const t = ensureTicketShape(raw, idx);
+    const key = ticketSignature(t);
+    if (!map.has(key)) {
+      map.set(key, t);
+      return;
+    }
+    const prev = map.get(key);
+    const mergedPurchases = [...(prev.purchases||[]), ...(t.purchases||[])].reduce((acc, cur) => {
+      const k = `${cur.date}|${cur.memo || ''}`;
+      if (!acc.some(x => `${x.date}|${x.memo || ''}` === k)) acc.push(cur);
+      return acc;
+    }, []).sort((x,y)=>y.date.localeCompare(x.date));
+    const mergedWins = [...(prev.wins||[]), ...(t.wins||[])].reduce((acc, cur) => {
+      const k = `${cur.date}|${cur.rank}`;
+      if (!acc.some(x => `${x.date}|${x.rank}` === k)) acc.push(cur);
+      return acc;
+    }, []).sort((x,y)=>y.date.localeCompare(x.date));
+    map.set(key, {
+      ...prev,
+      purchases: mergedPurchases,
+      wins: mergedWins,
+      updatedAt: Math.max(prev.updatedAt || 0, t.updatedAt || 0),
+      createdAt: Math.min(prev.createdAt || Date.now(), t.createdAt || Date.now()),
+    });
+  });
+  return [...map.values()];
+}
+
+async function fetchCloudTickets() {
+  if (!supabaseClient || !authUser) return [];
+  const { data, error } = await supabaseClient
+    .from(CLOUD_TABLE)
+    .select('ticket, updated_at')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row, idx) => ensureTicketShape(row.ticket, idx));
+}
+
+async function replaceCloudTickets(rows) {
+  if (!supabaseClient || !authUser) return;
+  const { error: delErr } = await supabaseClient
+    .from(CLOUD_TABLE)
+    .delete()
+    .eq('user_id', authUser.id);
+  if (delErr) throw delErr;
+  if (!rows.length) return;
+  const payload = rows.map(t => ({
+    user_id: authUser.id,
+    ticket_id: t.id,
+    ticket: t,
+    updated_at: new Date(t.updatedAt || Date.now()).toISOString(),
+  }));
+  const { error: insertErr } = await supabaseClient.from(CLOUD_TABLE).insert(payload);
+  if (insertErr) throw insertErr;
+}
+
+async function hydrateTicketsFromCloud() {
+  if (!supabaseClient || !authUser) return;
+  const localTickets = [...tickets];
+  const cloudTickets = await fetchCloudTickets();
+  const merged = mergeTicketArrays(cloudTickets, localTickets);
+  tickets = merged;
+  persistTickets({ skipCloud: true });
+  renderTickets();
+  renderProbDropdown();
+  if (merged.length !== cloudTickets.length || localTickets.length) {
+    await replaceCloudTickets(merged);
+  }
+}
+
+async function refreshTicketsFromCloud() {
+  if (!authUser) { showToast('로그인 후 사용할 수 있어요'); return; }
+  try {
+    tickets = await fetchCloudTickets();
+    persistTickets({ skipCloud: true });
+    renderTickets();
+    renderProbDropdown();
+    showToast('클라우드 티켓을 다시 불러왔어요');
+  } catch (e) {
+    console.error(e);
+    showToast('클라우드 불러오기에 실패했어요');
+  }
+}
+
+async function mergeLocalTicketsToCloud(manual = false) {
+  if (!authUser) { showToast('로그인 후 사용할 수 있어요'); return; }
+  try {
+    const cloudTickets = await fetchCloudTickets();
+    const merged = mergeTicketArrays(cloudTickets, tickets);
+    tickets = merged;
+    persistTickets({ skipCloud: true });
+    await replaceCloudTickets(merged);
+    renderTickets();
+    renderProbDropdown();
+    if (manual) showToast('이 기기 티켓을 클라우드에 업로드했어요');
+  } catch (e) {
+    console.error(e);
+    showToast('클라우드 업로드에 실패했어요');
+  }
+}
+
+function scheduleCloudSync() {
+  if (suppressCloudSync || !supabaseClient || !authUser) return;
+  if (syncInFlight) { syncQueued = true; return; }
+  syncInFlight = true;
+  replaceCloudTickets(tickets)
+    .catch((e) => {
+      console.error(e);
+      showToast('클라우드 동기화에 실패했어요');
+    })
+    .finally(() => {
+      syncInFlight = false;
+      if (syncQueued) {
+        syncQueued = false;
+        scheduleCloudSync();
+      }
+    });
+}
+
+// ─────────────────────────────────────────
+//  STATIC DATA CACHE
+//  GitHub Pages용: data/history.json, data/stats.json, data/latest.json 사용
+// ─────────────────────────────────────────
+let statsCache = { freq: null, winNums: [], totalDraws: 0, latestDrwNo: 0, updatedAt: null };
+let historyCache = [];
+try {
+  const s = localStorage.getItem('lotto_stats');
+  if (s) statsCache = JSON.parse(s);
+} catch(e) {}
+try {
+  const h = localStorage.getItem('lotto_history');
+  if (h) historyCache = JSON.parse(h);
+} catch(e) {}
+
+function persistStats() {
+  try { localStorage.setItem('lotto_stats', JSON.stringify(statsCache)); } catch(e) {}
+}
+function persistHistory() {
+  try { localStorage.setItem('lotto_history', JSON.stringify(historyCache)); } catch(e) {}
+}
+
+// ─────────────────────────────────────────
+//  STATIC DATA HELPERS
+// ─────────────────────────────────────────
+async function fetchJson(path, force = false) {
+  const url = force ? `${path}?v=${Date.now()}` : path;
+  const res = await fetch(url, { cache: force ? 'no-store' : 'default' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+function normalizeHistoryPayload(raw) {
+  const arr = Array.isArray(raw) ? raw : (raw?.draws || []);
+  return arr
+    .map(d => ({
+      drwNo: Number(d.drwNo),
+      drwNoDate: d.drwNoDate,
+      nums: Array.isArray(d.nums)
+        ? d.nums.map(Number).sort((a,b)=>a-b)
+        : [d.drwtNo1,d.drwtNo2,d.drwtNo3,d.drwtNo4,d.drwtNo5,d.drwtNo6].map(Number).sort((a,b)=>a-b),
+      bonusNo: Number(d.bonusNo ?? d.bnusNo ?? 0),
+    }))
+    .filter(d => d.drwNo && d.nums.length === 6);
+}
+function normalizeStatsPayload(raw, history) {
+  if (raw?.freq && raw?.totalDraws) {
+    return {
+      freq: raw.freq,
+      winNums: Array.isArray(raw.winNums) ? raw.winNums.map(d => ({
+        drwNo: Number(d.drwNo),
+        drwNoDate: d.drwNoDate,
+        nums: [...d.nums].map(Number).sort((a,b)=>a-b),
+        bonusNo: Number(d.bonusNo ?? 0),
+      })) : history.map(d => ({...d})),
+      totalDraws: Number(raw.totalDraws),
+      latestDrwNo: Number(raw.latestDrwNo || 0),
+      updatedAt: raw.updatedAt || null,
+    };
+  }
+
+  const freq = {};
+  for (let i = 1; i <= 45; i++) freq[i] = 0;
+  history.forEach(draw => draw.nums.forEach(n => { freq[n] = (freq[n] || 0) + 1; }));
+  return {
+    freq,
+    winNums: history.map(d => ({...d})),
+    totalDraws: history.length,
+    latestDrwNo: history.length ? Math.max(...history.map(d => d.drwNo)) : 0,
+    updatedAt: raw?.updatedAt || null,
+  };
+}
+async function initStatsData(force = false) {
+  showLoadOverlay(true, force ? '저장소의 최신 데이터 파일을 다시 불러오는 중...' : '저장된 데이터 파일 확인 중...');
+  updateStatusUI('loading', '데이터 확인 중...');
+  try {
+    const [latestRaw, statsRaw, historyRaw] = await Promise.all([
+      fetchJson(`${DATA_BASE}/latest.json`, force),
+      fetchJson(`${DATA_BASE}/stats.json`, force),
+      fetchJson(`${DATA_BASE}/history.json`, force),
+    ]);
+
+    historyCache = normalizeHistoryPayload(historyRaw);
+    persistHistory();
+
+    statsCache = normalizeStatsPayload(statsRaw, historyCache);
+    if (latestRaw?.latestDrwNo) statsCache.latestDrwNo = Number(latestRaw.latestDrwNo);
+    if (latestRaw?.updatedAt && !statsCache.updatedAt) statsCache.updatedAt = latestRaw.updatedAt;
+    persistStats();
+
+    if (!statsCache.totalDraws) {
+      throw new Error('data 파일에 당첨 이력이 아직 없습니다');
+    }
+
+    const d = statsCache.updatedAt
+      ? new Date(statsCache.updatedAt).toLocaleDateString('ko-KR')
+      : '업데이트 시각 없음';
+    updateStatusUI('ok', getUpdateStatusText(statsCache.latestDrwNo));
+    showToast(force ? '✅ 데이터 업데이트 완료' : '✅ 데이터 로드 완료');
+  } catch(err) {
+    console.error('[initStatsData]', err);
+    if (statsCache.freq && statsCache.totalDraws > 0) {
+      const d = statsCache.updatedAt
+        ? new Date(statsCache.updatedAt).toLocaleDateString('ko-KR')
+        : '캐시 사용';
+      updateStatusUI('warn', `저장소 로드 실패 · 로컬 캐시 사용 중 · ${statsCache.latestDrwNo}회차 · ${d}`);
+    } else {
+      updateStatusUI('err', `data 파일 로드 실패: ${err.message}`);
+    }
+  } finally {
+    showLoadOverlay(false);
+  }
+}
+function loadStatsFromCache() {
+  if (statsCache.freq && statsCache.totalDraws > 0) {
+    const d = statsCache.updatedAt ? new Date(statsCache.updatedAt).toLocaleDateString('ko-KR') : '-';
+    updateStatusUI('ok', getUpdateStatusText(statsCache.latestDrwNo));
+  } else {
+    updateStatusUI('warn', `데이터 없음 · ${getCurrentKstLabel()} · 업데이트 필요`);
+  }
+}
+async function refreshDrawData() {
+  await checkAndRefresh();
+}
+
+// ─────────────────────────────────────────
+//  UI HELPERS
+// ─────────────────────────────────────────
+function updateStatusUI(state, text) {
+  // status-dot/text는 결과 카드 안에 있을 때만 존재 — null-safe 처리
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  if (dot) dot.className = 'status-dot ' + state;
+  if (txt) txt.textContent = text;
+  // 데이터 상태를 내부적으로 저장해두고 카드 렌더 시 반영
+  window._lastStatus = { state, text };
+}
+function showLoadOverlay(show, text) {
+  const el = document.getElementById('load-overlay');
+  el.classList.toggle('hidden', !show);
+  if (show && text) document.getElementById('load-text').textContent = text;
+  if (show) document.getElementById('load-progress').textContent = '';
+}
+function updateLoadProgress(text) {
+  document.getElementById('load-progress').textContent = text;
+}
+
+// ─────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────
+function init() {
+  buildBallGrid();
+  const today = new Date().toISOString().split('T')[0];
+  ['save-date', 'win-date', 'buy-date'].forEach(id =>
+    document.getElementById(id).value = today
+  );
+  updateAuthUI();
+  initSupabaseAuth();
+  renderTickets();
+  loadStatsFromCache();
+  if (!(statsCache.freq && statsCache.totalDraws > 0)) {
+    initStatsData(false).catch(() => {});
+  }
+}
+
+// ─────────────────────────────────────────
+//  BALL GRID
+// ─────────────────────────────────────────
+let selectedNums = [];
+
+function buildBallGrid() {
+  const grid = document.getElementById('ball-grid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= 45; i++) {
+    const b = document.createElement('button');
+    b.className = 'ball'; b.textContent = i; b.id = 'b' + i;
+    b.onclick = () => toggleBall(i);
+    grid.appendChild(b);
+  }
+}
+
+function colorClass(n) {
+  if (n <= 10) return 'color-1';
+  if (n <= 20) return 'color-2';
+  if (n <= 30) return 'color-3';
+  if (n <= 40) return 'color-4';
+  return 'color-5';
+}
+
+function toggleBall(n) {
+  if (selectedNums.includes(n)) {
+    selectedNums = selectedNums.filter(x => x !== n);
+    document.getElementById('b' + n).className = 'ball';
+  } else {
+    if (selectedNums.length >= 6) { showToast('6개만 선택할 수 있어요'); return; }
+    selectedNums.push(n);
+    document.getElementById('b' + n).className = 'ball selected';
+  }
+  renderSelectedRow();
+}
+
+function renderSelectedRow() {
+  const row = document.getElementById('selected-row');
+  const sorted = [...selectedNums].sort((a, b) => a - b);
+  if (!sorted.length) {
+    row.innerHTML = '<span style="font-size:12px;color:var(--text3)">번호를 선택하세요</span>';
+    return;
+  }
+  row.innerHTML = sorted.map(n =>
+    `<div class="selected-ball ${colorClass(n)}">${n}</div>`
+  ).join('') + `<span class="selected-count">${sorted.length}/6</span>`;
+}
+
+function clearSelection() {
+  selectedNums = [];
+  document.querySelectorAll('.ball.selected').forEach(b => b.className = 'ball');
+  renderSelectedRow();
+}
+
+function randomPick() {
+  if (selectedNums.length === 0) { showToast('번호를 1개 이상 먼저 선택해주세요'); return; }
+  const needed = 6 - selectedNums.length;
+  if (needed === 0) { showToast('이미 6개가 모두 선택됐어요'); return; }
+  const pool = [];
+  for (let i = 1; i <= 45; i++) if (!selectedNums.includes(i)) pool.push(i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  pool.slice(0, needed).forEach(n => {
+    selectedNums.push(n);
+    document.getElementById('b' + n).className = 'ball selected';
+  });
+  renderSelectedRow();
+  showToast(`🎲 ${needed}개 번호를 추천했어요!`);
+}
+
+// ─────────────────────────────────────────
+//  SAVE TICKET
+// ─────────────────────────────────────────
+function openSaveModal() {
+  if (selectedNums.length !== 6) { showToast('6개 번호를 먼저 선택해주세요'); return; }
+  document.getElementById('save-nums-preview').innerHTML =
+    [...selectedNums].sort((a, b) => a - b).map(n => miniball(n, 34)).join('');
+  document.getElementById('save-modal').classList.add('open');
+}
+
+function saveTicket() {
+  const sorted = [...selectedNums].sort((a, b) => a - b);
+  const date   = document.getElementById('save-date').value;
+  const memo   = document.getElementById('save-memo').value.trim();
+  if (!date) { showToast('날짜를 선택해주세요'); return; }
+  const key = sorted.join(','), now = Date.now();
+  const existing = tickets.find(t => t.nums.join(',') === key);
+  if (existing) {
+    existing.purchases.push({ date, memo });
+    existing.purchases.sort((a, b) => b.date.localeCompare(a.date));
+    existing.updatedAt = now;
+    showToast('✅ 기존 티켓에 구매 이력 추가');
+  } else {
+    tickets.push({
+      id: makeTicketId(), nums: sorted,
+      purchases: [{ date, memo }], wins: [],
+      createdAt: now, updatedAt: now,
+    });
+    showToast('🎫 새 티켓 저장 완료!');
+  }
+  persistTickets();
+  closeModal('save-modal');
+  clearSelection();
+  document.getElementById('save-memo').value = '';
+  currentPage = 1;
+  renderTickets();
+}
+
+// ─────────────────────────────────────────
+//  TICKETS LIST
+// ─────────────────────────────────────────
+let currentPage = 1, currentTicketId = null, pendingDeleteId = null, pendingDeleteMode = 'single', expandedTicketId = null;
+let selectedProbAlgo = 'freq';
+let probRecent20Expanded = false;
+const PAGE_SIZE = 10;
+
+function getSorted() {
+  const mode = document.getElementById('sort-select').value;
+  const arr  = [...tickets];
+  const lw   = t => t.wins.length
+    ? [...t.wins].sort((a, b) => b.date.localeCompare(a.date))[0].date : '';
+  const latestPurchaseTs = t => {
+    const ds = (t.purchases || []).map(p => p.date).filter(Boolean).sort().at(-1);
+    return ds ? new Date(ds + 'T00:00:00').getTime() : 0;
+  };
+  const oldestPurchaseTs = t => {
+    const ds = (t.purchases || []).map(p => p.date).filter(Boolean).sort()[0];
+    return ds ? new Date(ds + 'T00:00:00').getTime() : 0;
+  };
+
+  if      (mode === 'recent-update')    arr.sort((a, b) => (b.updatedAt||0)-(a.updatedAt||0));
+  else if (mode === 'reg-newest')       arr.sort((a, b) => latestPurchaseTs(b) - latestPurchaseTs(a));
+  else if (mode === 'reg-oldest')       arr.sort((a, b) => oldestPurchaseTs(a) - oldestPurchaseTs(b));
+  else if (mode === 'wins-most')        arr.sort((a, b) => {
+    const d = b.wins.length - a.wins.length;
+    return d || latestPurchaseTs(b) - latestPurchaseTs(a);
+  });
+  else if (mode === 'wins-least')       arr.sort((a, b) => {
+    const aHasWins = a.wins.length > 0;
+    const bHasWins = b.wins.length > 0;
+    if (aHasWins && bHasWins) {
+      const d = a.wins.length - b.wins.length;
+      return d || latestPurchaseTs(b) - latestPurchaseTs(a);
+    }
+    if (aHasWins && !bHasWins) return -1;
+    if (!aHasWins && bHasWins) return 1;
+    return latestPurchaseTs(b) - latestPurchaseTs(a);
+  });
+  else if (mode === 'win-date-newest')  arr.sort((a, b) => { const da=lw(a),db=lw(b); if(!da&&!db) return latestPurchaseTs(b)-latestPurchaseTs(a); if(!da)return 1; if(!db)return -1; return db.localeCompare(da); });
+  else if (mode === 'win-date-oldest')  arr.sort((a, b) => { const da=lw(a),db=lw(b); if(!da&&!db) return latestPurchaseTs(b)-latestPurchaseTs(a); if(!da)return 1; if(!db)return -1; return da.localeCompare(db); });
+  return arr;
+}
+
+function renderTickets() {
+  document.getElementById('ticket-count-badge').textContent = `총 ${tickets.length}개`;
+  const list = document.getElementById('tickets-list');
+  if (!tickets.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><div class="empty-text">아직 저장된 티켓이 없어요<br>번호 입력 탭에서 추가해보세요</div></div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+  const sorted = getSorted();
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+  list.innerHTML = sorted
+    .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+    .map(t => ticketCard(t)).join('');
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++)
+    html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  pg.innerHTML = html;
+}
+
+function goPage(n) { currentPage = n; renderTickets(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function ticketCard(t) {
+  const sP = [...t.purchases].sort((a, b) => b.date.localeCompare(a.date));
+  const sW = [...t.wins].sort((a, b) => b.date.localeCompare(a.date));
+  const lP = sP[0], oP = sP.slice(1), hasWins = sW.length > 0, lW = sW[0], oW = sW.slice(1);
+  const ballsHtml = t.nums.map(n => `<div class="mini-ball ${colorClass(n)}">${n}</div>`).join('');
+  const winStrip  = hasWins
+    ? `<div class="win-strip">${sW.slice(0,3).map(w=>`<span class="win-tag">🏆 ${w.date} · ${w.rank}등</span>`).join('')}</div>` : '';
+  const oPHtml = oP.length
+    ? `<div id="op-${t.id}" class="hidden">${oP.map(p=>`<div class="history-row"><span>${p.date}${p.memo?` <span style="color:var(--text3)">· ${p.memo}</span>`:''}</span></div>`).join('')}</div>
+       <button class="expand-btn" onclick="toggle('op-${t.id}',this)"><span>이전 구매 이력 ${oP.length}건</span><span class="expand-icon">▼</span></button>` : '';
+  const oWHtml = oW.length
+    ? `<div id="ow-${t.id}" class="hidden">${oW.map(w=>`<div class="history-row"><span>${w.date}</span><span class="badge badge-won">${w.rank}등</span></div>`).join('')}</div>
+       <button class="expand-btn" onclick="toggle('ow-${t.id}',this)"><span>이전 당첨 이력 ${oW.length}건</span><span class="expand-icon">▼</span></button>` : '';
+  return `
+  <div class="ticket${expandedTicketId===t.id?' expanded':''}" id="tk-${t.id}">
+    <div class="ticket-header" onclick="toggleTicket('${t.id}')">
+      <div class="ticket-nums">${ballsHtml}</div>
+      <div class="ticket-meta">
+        <div style="margin-bottom:4px"><span class="badge badge-count">${t.purchases.length}회 구매</span></div>
+        <div>${lP?.date||''}</div>
+      </div>
+    </div>
+    ${winStrip}
+    <div id="tb-${t.id}" class="${expandedTicketId===t.id?'':'hidden'}">
+      <div class="ticket-body">
+        <div class="section-label">구매 이력</div>
+        <div class="history-row">
+          <span>${lP?.date||''}${lP?.memo?` <span style="color:var(--text3)">· ${lP.memo}</span>`:''}</span>
+          <span class="badge badge-count">최신</span>
+        </div>
+        ${oPHtml}
+        ${hasWins?`<div class="divider"></div><div class="section-label">당첨 이력</div>
+          <div class="history-row"><span>${lW.date}</span><span class="badge badge-won">${lW.rank}등 🏆</span></div>${oWHtml}`:''}
+      </div>
+      <div class="ticket-actions">
+        <button class="btn btn-outline" style="font-size:12px;padding:8px 12px" onclick="openBuyModal('${t.id}')">🛒 구매 추가</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:8px 12px;color:var(--green);border-color:rgba(46,213,115,0.3)" onclick="openWinModal('${t.id}')">🏆 당첨 기록</button>
+        <button class="btn btn-danger" style="font-size:12px;padding:8px 12px" onclick="askDelete('${t.id}')">삭제</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggle(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('hidden');
+  const ic = btn.querySelector?.('.expand-icon');
+  if (ic) ic.classList.toggle('open');
+}
+
+function toggleTicket(id) {
+  expandedTicketId = expandedTicketId === id ? null : id;
+  renderTickets();
+}
+
+function askDelete(id) {
+  pendingDeleteMode = 'single';
+  pendingDeleteId = id;
+  document.getElementById('confirm-title').textContent = '🗑️ 티켓 삭제';
+  document.getElementById('confirm-msg').innerHTML = '이 티켓을 삭제할까요?<br>삭제 후 복구할 수 없어요.';
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function askDeleteAll() {
+  if (!tickets.length) { showToast('삭제할 티켓이 없어요'); return; }
+  pendingDeleteMode = 'all';
+  pendingDeleteId = null;
+  document.getElementById('confirm-title').textContent = '🗑️ 전체 삭제';
+  document.getElementById('confirm-msg').innerHTML = `티켓 ${tickets.length}개를 모두 삭제할까요?<br>삭제 후 복구할 수 없어요.`;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function closeConfirm() {
+  pendingDeleteId = null;
+  pendingDeleteMode = 'single';
+  document.getElementById('confirm-overlay').classList.remove('open');
+}
+function confirmDelete() {
+  if (pendingDeleteMode === 'all') {
+    tickets = [];
+    expandedTicketId = null;
+    closeConfirm();
+    currentPage = 1;
+    persistTickets(); renderTickets();
+    showToast('티켓 전체가 삭제됐어요');
+    return;
+  }
+  if (!pendingDeleteId) return;
+  tickets = tickets.filter(t => t.id !== pendingDeleteId);
+  if (expandedTicketId === pendingDeleteId) expandedTicketId = null;
+  pendingDeleteId = null;
+  document.getElementById('confirm-overlay').classList.remove('open');
+  const tp = Math.ceil(tickets.length / PAGE_SIZE);
+  if (currentPage > tp) currentPage = Math.max(1, tp);
+  persistTickets(); renderTickets();
+  showToast('티켓이 삭제됐어요');
+}
+
+function openBuyModal(id) {
+  currentTicketId = id;
+  const t = tickets.find(x => x.id === id);
+  document.getElementById('buy-nums-preview').innerHTML = t.nums.map(n => miniball(n, 34)).join('');
+  document.getElementById('buy-modal').classList.add('open');
+}
+function addBuy() {
+  const date = document.getElementById('buy-date').value;
+  const memo = document.getElementById('buy-memo').value.trim();
+  if (!date) { showToast('날짜를 선택해주세요'); return; }
+  const t = tickets.find(x => x.id === currentTicketId);
+  t.purchases.push({ date, memo });
+  t.purchases.sort((a, b) => b.date.localeCompare(a.date));
+  t.updatedAt = Date.now();
+  persistTickets(); renderTickets(); closeModal('buy-modal');
+  document.getElementById('buy-memo').value = '';
+  showToast('🛒 구매 이력이 추가됐어요');
+}
+
+function openWinModal(id) {
+  currentTicketId = id;
+  const t = tickets.find(x => x.id === id);
+  document.getElementById('win-nums-preview').innerHTML = t.nums.map(n => miniball(n, 34)).join('');
+  document.getElementById('win-modal').classList.add('open');
+}
+function addWin() {
+  const date = document.getElementById('win-date').value;
+  const rank = parseInt(document.getElementById('win-rank').value);
+  if (!date) { showToast('날짜를 선택해주세요'); return; }
+  const t = tickets.find(x => x.id === currentTicketId);
+  t.wins.push({ date, rank });
+  t.wins.sort((a, b) => b.date.localeCompare(a.date));
+  t.updatedAt = Date.now();
+  persistTickets(); renderTickets(); closeModal('win-modal');
+  showToast(`🏆 ${rank}등 당첨 기록 완료!`);
+}
+
+// ─────────────────────────────────────────
+//  PROBABILITY
+// ─────────────────────────────────────────
+// ─────────────────────────────────────────
+//  PROB PAGE — 드롭다운 + 무한스크롤 + 확률계산
+// ─────────────────────────────────────────
+const DD_PAGE_SIZE = 9999;   // 한 번에 모두 노출
+let ddOffset       = 0;   // 무한스크롤 오프셋
+let ddFiltered     = [];  // 현재 필터된 티켓 목록
+let selectedProbId = null;
+
+// 드롭다운 박스 클릭
+function onProbBoxClick() {
+  const input = document.getElementById('prob-input');
+  input.removeAttribute('readonly');
+  input.focus();
+  openProbDropdown();
+}
+
+// 입력 이벤트
+function onProbInput(e) {
+  const val = e.target.value;
+  const clearBtn = document.getElementById('prob-clear');
+  clearBtn.classList.toggle('visible', val.length > 0);
+  ddOffset = 0;
+  openProbDropdown();
+}
+
+// X 버튼으로 입력 지우기
+function clearProbInput(e) {
+  e.stopPropagation();
+  const input = document.getElementById('prob-input');
+  input.value = '';
+  input.removeAttribute('readonly');
+  input.focus();
+  document.getElementById('prob-clear').classList.remove('visible');
+  ddOffset = 0;
+  openProbDropdown();
+}
+
+function openProbDropdown() {
+  const dd = document.getElementById('prob-dropdown');
+  const chevron = document.getElementById('prob-chevron');
+  dd.classList.add('open');
+  chevron.classList.add('open');
+  renderDropdownItems(false);
+}
+
+function closeProbDropdown() {
+  document.getElementById('prob-dropdown').classList.remove('open');
+  document.getElementById('prob-chevron').classList.remove('open');
+  document.getElementById('prob-input').setAttribute('readonly', true);
+}
+
+// 드롭다운 아이템 렌더 (무한스크롤)
+function renderDropdownItems(append) {
+  const dd    = document.getElementById('prob-dropdown');
+  const query = document.getElementById('prob-input').value.trim();
+
+  // 최근 업데이트순 정렬
+  const sorted = [...tickets].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  // 숫자 토큰 검색 필터
+  if (!append) {
+    ddFiltered = !query
+      ? sorted
+      : sorted.filter(t => {
+          const tokens = query.split(/[\s,]+/).filter(s => /\d/.test(s));
+          return tokens.every(tok => t.nums.some(n => String(n).includes(tok)));
+        });
+    ddOffset = 0;
+  }
+
+  const slice   = ddFiltered.slice(0, ddOffset + DD_PAGE_SIZE);
+  const hasMore = ddFiltered.length > ddOffset + DD_PAGE_SIZE;
+
+  if (!ddFiltered.length) {
+    dd.innerHTML = `<div class="prob-dd-empty">${query ? '일치하는 티켓이 없어요' : '저장된 티켓이 없어요'}</div>`;
+    return;
+  }
+
+  const itemsHtml = slice.map(t => {
+    const isSelected = t.id === selectedProbId;
+    return `<div class="prob-dd-item${isSelected ? ' selected' : ''}" onclick="selectProbTicket('${t.id}')">
+      <div style="display:flex;gap:3px;flex-shrink:0">${t.nums.map(n =>
+        `<div class="mini-ball ${colorClass(n)}" style="width:24px;height:24px;font-size:9px">${n}</div>`
+      ).join('')}</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--text3);white-space:nowrap">${t.purchases.length}회 구매</span>
+      ${isSelected ? '<span style="color:var(--gold);font-size:11px">✓</span>' : ''}
+    </div>`;
+  }).join('');
+
+  const footerHtml = '';
+
+  if (!append) {
+    dd.innerHTML = itemsHtml + footerHtml;
+  } else {
+    dd.innerHTML = itemsHtml + footerHtml;
+  }
+}
+
+function loadMoreDD() {
+  renderDropdownItems(false);
+}
+
+// 티켓 선택
+function selectProbTicket(id) {
+  selectedProbAlgo = 'freq';
+  probRecent20Expanded = false;
+  selectedProbId = id;
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+
+  // 입력창에 번호 표시
+  const input = document.getElementById('prob-input');
+  input.value = t.nums.join('  ');
+  input.setAttribute('readonly', true);
+  document.getElementById('prob-clear').classList.add('visible');
+
+  // 선택된 티켓 미리보기
+  const preview = document.getElementById('prob-selected');
+  preview.style.display = 'flex';
+  preview.innerHTML = t.nums.map(n =>
+    `<div class="mini-ball ${colorClass(n)}">${n}</div>`
+  ).join('') + `<span style="margin-left:auto;font-size:11px;color:var(--text3)">${t.purchases.length}회 구매</span>`;
+
+  closeProbDropdown();
+  renderProbResult(id);
+}
+
+// 확률 분석 상태 초기화
+function setProbAlgo(algo) {
+  if (!selectedProbId) return;
+  selectedProbAlgo = algo;
+  if (algo !== 'recent20') probRecent20Expanded = false;
+  renderProbResult(selectedProbId);
+}
+
+function toggleRecent20Expanded() {
+  probRecent20Expanded = !probRecent20Expanded;
+  if (selectedProbId) renderProbResult(selectedProbId);
+}
+
+function calcGapPatternStats(ticketNums, draws) {
+  const sorted = [...ticketNums].sort((a,b)=>a-b);
+  const gaps = [];
+  for (let i = 1; i < sorted.length; i++) gaps.push(sorted[i] - sorted[i-1]);
+
+  const posMatches = gaps.map((gap, idx) => {
+    const count = draws.filter(draw => {
+      const dn = [...draw.nums].sort((a,b)=>a-b);
+      return (dn[idx+1] - dn[idx]) === gap;
+    }).length;
+    return { gap, idx, count, pct: draws.length ? (count / draws.length) * 100 : 0 };
+  });
+
+  const exactPatternCount = draws.filter(draw => {
+    const dn = [...draw.nums].sort((a,b)=>a-b);
+    const dg = [];
+    for (let i = 1; i < dn.length; i++) dg.push(dn[i] - dn[i-1]);
+    return dg.join(',') === gaps.join(',');
+  }).length;
+
+  const multipliedPct = posMatches.reduce((acc, item) => acc * (item.pct / 100), 1) * 100;
+  return { gaps, posMatches, exactPatternCount, multipliedPct };
+}
+
+function resetProbAnalysis() {
+  selectedProbId = null;
+  selectedProbAlgo = 'freq';
+  probRecent20Expanded = false;
+  const input = document.getElementById('prob-input');
+  if (input) {
+    input.value = '';
+    input.setAttribute('readonly', true);
+  }
+  const clearBtn = document.getElementById('prob-clear');
+  if (clearBtn) clearBtn.classList.remove('visible');
+  const preview = document.getElementById('prob-selected');
+  if (preview) {
+    preview.style.display = 'none';
+    preview.innerHTML = '';
+  }
+  const area = document.getElementById('prob-result-area');
+  if (area) area.innerHTML = '';
+  closeProbDropdown();
+}
+
+// 확률 결과 렌더
+
+function renderProbResult(id) {
+  const t        = tickets.find(x => x.id === id);
+  const area     = document.getElementById('prob-result-area');
+  const hasStats = !!(statsCache.freq && statsCache.totalDraws > 0);
+  const hasHistory = Array.isArray(historyCache) && historyCache.length > 0;
+
+  if (!hasStats || !hasHistory) {
+    area.innerHTML = `
+      <div class="card">
+        <div class="no-data-box">
+          <div class="no-data-icon">📡</div>
+          <div class="no-data-msg">
+            확률 계산을 위해 저장소의 data 파일이 필요해요.<br>
+            아래 버튼을 눌러 <code>data/history.json</code>, <code>data/stats.json</code>을 다시 불러오세요.<br>
+            <span style="font-size:11px;color:var(--text3)">GitHub Actions가 history.json을 갱신하면 이 버튼으로 최신 내용을 다시 읽어올 수 있어요.</span>
+          </div>
+          <button class="btn-load" id="btn-load-data" onclick="startLoadData()">
+            📥 data 파일 다시 불러오기
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const totalDraws = statsCache.totalDraws;
+  const overallNumProbs = t.nums.map(n => {
+    const count = Number(statsCache.freq[n] || 0);
+    const p = totalDraws ? (count / totalDraws) : 0;
+    return { n, p: p * 100, count };
+  });
+
+  const recent20Draws = [...historyCache].sort((a,b)=>b.drwNo-a.drwNo).slice(0, 20);
+  const recent20NumProbs = t.nums.map(n => {
+    const count = recent20Draws.filter(d => d.nums.includes(n)).length;
+    const p = recent20Draws.length ? (count / recent20Draws.length) : 0;
+    return { n, p: p * 100, count };
+  });
+
+  const recent50Draws = [...historyCache].sort((a,b)=>b.drwNo-a.drwNo).slice(0, 50);
+  const gapStats = calcGapPatternStats(t.nums, recent50Draws);
+
+  const exactKey = [...t.nums].sort((a,b)=>a-b).join(',');
+  const exactMatches = historyCache.filter(d => d.nums.join(',') === exactKey);
+
+  const compareRows = historyCache.map(draw => {
+    const matchedNums = t.nums.filter(n => draw.nums.includes(n));
+    const matchCount = matchedNums.length;
+    const bonusMatch = draw.bonusNo && t.nums.includes(draw.bonusNo);
+    return { ...draw, matchCount, bonusMatch, matchedNums };
+  }).filter(r => r.matchCount > 0);
+
+  compareRows.sort((a, b) => {
+    if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+    if ((b.bonusMatch?1:0) !== (a.bonusMatch?1:0)) return (b.bonusMatch?1:0) - (a.bonusMatch?1:0);
+    return b.drwNo - a.drwNo;
+  });
+
+  const bestRows = compareRows.slice(0, 5);
+
+  const algoMap = {
+    freq: {
+      label: '전체 빈도',
+      probPct: overallNumProbs.reduce((acc, item) => acc * (item.p / 100), 1) * 100,
+      detailTitle: '번호별 과거 출현 현황',
+      detailHtml: overallNumProbs.map(({ n, p, count }) => `
+        <div class="prob-history-item">
+          <span style="display:flex;align-items:center;gap:8px">
+            <div class="mini-ball ${colorClass(n)}" style="width:24px;height:24px;font-size:13px;flex-shrink:0">${n}</div>
+            <span style="color:var(--text3);font-size:11px">(${count}회 출현)</span>
+          </span>
+          <span style="font-family:'Space Mono',monospace;color:var(--gold)">${p.toFixed(4)}%</span>
+        </div>`).join('')
+    },
+    recent20: {
+      label: '최근 20회',
+      probPct: recent20NumProbs.reduce((acc, item) => acc * (item.p / 100), 1) * 100,
+      detailTitle: '최근 20회 당첨번호 이력',
+      detailHtml: (() => {
+        const visible = probRecent20Expanded ? recent20Draws : recent20Draws.slice(0, 6);
+        const list = visible.map(draw => `
+          <div class="mini-list-row">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+              <span>${draw.drwNoDate} · 제${draw.drwNo}회</span>
+              <span style="font-family:'Space Mono',monospace;color:var(--gold)">${t.nums.filter(n => draw.nums.includes(n)).length}개 겹침</span>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${draw.nums.map(n => `<div class="mini-ball ${colorClass(n)}" style="width:24px;height:24px;font-size:9px">${n}</div>`).join('')} ${draw.bonusNo ? `<div style="font-size:11px;color:var(--text3);margin-left:4px;align-self:center">+ ${draw.bonusNo}</div>` : ''}</div>
+          </div>`).join('');
+        const summary = `<div class="algo-card-title">최근 20회 안에서 선택 번호가 등장한 횟수 비율을 곱해 계산해요.</div>`;
+        const expand = recent20Draws.length > 6 ? `<button class="expand-btn" onclick="toggleRecent20Expanded()">${probRecent20Expanded ? '접기' : '펼치기'} <span class="expand-icon ${probRecent20Expanded ? 'open' : ''}">▼</span></button>` : '';
+        return summary + list + expand;
+      })()
+    },
+    gap50: {
+      label: '간격 패턴',
+      probPct: gapStats.multipliedPct,
+      detailTitle: '최근 50회 번호 간 간격 분포',
+      detailHtml: (() => {
+        const formula = `<div class="mini-list-row"><div style="margin-bottom:8px;color:var(--text2)">선택 번호 간격식</div><div class="gap-formula">${[...t.nums].sort((a,b)=>a-b).join(' → ')}<br>간격: ${gapStats.gaps.join(' · ')}</div><div style="margin-top:8px;font-size:11px;color:var(--text3)">최근 50회에서 같은 위치의 간격이 나온 비율을 곱해 계산해요.</div></div>`;
+        const bars = gapStats.posMatches.map((item, idx) => `
+          <div class="bar-row">
+            <div style="font-family:'Space Mono',monospace;color:var(--text2)">Gap ${idx+1}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, Math.min(100, item.pct))}%"></div></div>
+            <div style="font-family:'Space Mono',monospace;color:var(--gold);font-size:11px">${item.gap} (${item.count}회)</div>
+          </div>`).join('');
+        const exact = `<div class="mini-list-row" style="margin-top:8px">동일 간격 패턴 완전 일치: <span style="color:var(--gold);font-family:'Space Mono',monospace">${gapStats.exactPatternCount}회</span> / 최근 50회</div>`;
+        return formula + `<div class="mini-list-row">${bars}</div>` + exact;
+      })()
+    }
+  };
+
+  const currentAlgo = algoMap[selectedProbAlgo] || algoMap.freq;
+  const multipliedProbText = currentAlgo.probPct === 0 ? '0%' : `${currentAlgo.probPct.toFixed(12)}%`;
+
+  area.innerHTML = `
+    <div class="card">
+      <div class="data-status" id="data-status">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="status-dot ok" id="status-dot"></span>
+          <span id="status-text" style="font-size:12px;color:var(--text2)">${getUpdateStatusText(statsCache.latestDrwNo)}</span>
+        </div>
+        <button class="btn-load" style="padding:5px 12px;font-size:11px;font-weight:500;background:transparent;border:1px solid var(--border);color:var(--text3)" onclick="checkAndRefresh()">↻ 업데이트</button>
+      </div>
+
+      <div class="algo-chip-row">
+        <button class="algo-chip ${selectedProbAlgo === 'freq' ? 'active' : ''}" onclick="setProbAlgo('freq')">전체 빈도</button>
+        <button class="algo-chip ${selectedProbAlgo === 'recent20' ? 'active' : ''}" onclick="setProbAlgo('recent20')">최근 20회</button>
+        <button class="algo-chip ${selectedProbAlgo === 'gap50' ? 'active' : ''}" onclick="setProbAlgo('gap50')">간격 패턴</button>
+      </div>
+
+      <div class="prob-display">
+        <div class="prob-num">${multipliedProbText}</div>
+        <div class="prob-label">${currentAlgo.label}</div>
+      </div>
+
+      <div class="section-label" style="margin-bottom:10px">${currentAlgo.detailTitle}</div>
+      ${currentAlgo.detailHtml}
+
+      <div class="divider"></div>
+      <div class="section-label">이전 당첨 이력 확인</div>
+      ${exactMatches.length > 0
+        ? exactMatches.map(m => `
+          <div class="prob-history-item">
+            <span>${m.drwNoDate} · 제${m.drwNo}회</span>
+            <span class="badge badge-won">같은 번호 조합</span>
+          </div>`).join('')
+        : `<div style="padding:12px 0;text-align:center;color:var(--text3);font-size:13px">
+            현재 저장된 전체 회차 기준으로 동일한 번호 조합 당첨 이력은 없어요
+           </div>`
+      }
+
+      <div class="divider"></div>
+      <div class="section-label">가장 많이 겹친 과거 회차 (참고)</div>
+      ${bestRows.length > 0
+        ? bestRows.map(m => `
+          <div class="prob-history-item" style="display:block">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+              <span>${m.drwNoDate} · 제${m.drwNo}회</span>
+              <span class="badge" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">${m.matchCount}개 일치${m.bonusMatch ? ' + 보너스' : ''}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.7">
+              당첨번호 전체: ${m.nums.join(', ')}${m.bonusNo ? ` + 보너스 ${m.bonusNo}` : ''}
+            </div>
+            <div style="font-size:12px;color:var(--gold);margin-top:4px;line-height:1.7">
+              겹친 번호: ${m.matchedNums.join(', ')}${m.bonusMatch ? ` · 보너스 일치 ${m.bonusNo}` : ''}
+            </div>
+          </div>`).join('')
+        : `<div style="padding:12px 0;text-align:center;color:var(--text3);font-size:13px">
+            비교 가능한 회차 데이터가 없어요
+           </div>`
+      }
+    </div>`;
+  if (window._lastStatus) updateStatusUI(window._lastStatus.state, window._lastStatus.text);
+}
+
+// 불러오기 버튼 — 데이터 없을 때
+
+async function startLoadData() {
+  const btn = document.getElementById('btn-load-data');
+  if (btn) { btn.disabled = true; btn.textContent = '불러오는 중...'; }
+  await initStatsData(true);
+  if (selectedProbId) renderProbResult(selectedProbId);
+}
+
+function getExpectedLatestDrawKST() {
+  const firstDrawUtc = Date.UTC(2002, 11, 7, 11, 40, 0);
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const day = kst.getUTCDay();
+  const hour = kst.getUTCHours();
+  const minute = kst.getUTCMinutes();
+  const drawDone = day !== 6 || hour > 20 || (hour === 20 && minute >= 50);
+  const weeks = Math.floor((kst.getTime() - firstDrawUtc) / (7 * 24 * 60 * 60 * 1000));
+  return drawDone ? weeks + 1 : weeks;
+}
+function getCurrentKstLabel() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kst.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getUpdateStatusText(latestDrwNo) {
+  const currentLatest = Number(latestDrwNo || 0);
+  const expectedLatest = getExpectedLatestDrawKST();
+  const status = currentLatest >= expectedLatest ? '최신' : '업데이트 필요';
+  return `${currentLatest}회차 기준 · ${getCurrentKstLabel()} · ${status}`;
+}
+
+// 업데이트 버튼 — 이미 최신이면 안내, 아니면 로드
+async function checkAndRefresh() {
+  const expectedLatest = getExpectedLatestDrawKST();
+  const currentLatest = Number(statsCache.latestDrwNo || 0);
+
+  if (currentLatest >= expectedLatest) {
+    showToast(`이미 최신 데이터예요. (${currentLatest}회차)`);
+    updateStatusUI('ok', getUpdateStatusText(currentLatest));
+    return;
+  }
+
+  const beforeLatest = currentLatest;
+  await initStatsData(true);
+  if (selectedProbId) renderProbResult(selectedProbId);
+
+  const afterLatest = Number(statsCache.latestDrwNo || 0);
+  if (afterLatest <= beforeLatest) {
+    showToast('아직 새 업데이트가 없어요.');
+  }
+}
+// ─────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────
+function miniball(n, size) {
+  return `<div class="${colorClass(n)}" style="width:${size}px;height:${size}px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:${size>28?12:9}px;font-weight:700;flex-shrink:0">${n}</div>`;
+}
+
+function showPage(id, btn) {
+  const prevActive = document.querySelector('.page.active');
+  const prevId = prevActive ? prevActive.id : '';
+  if (prevId === 'page-prob' && id !== 'page-prob') resetProbAnalysis();
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'page-tickets') { currentPage = 1; renderTickets(); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('prob-wrap');
+  if (wrap && !wrap.contains(e.target)) closeProbDropdown();
+});
+document.querySelectorAll('.modal-bg').forEach(bg =>
+  bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); })
+);
+document.getElementById('confirm-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
+});
+
+init();
+</script>
+</body>
+</html>

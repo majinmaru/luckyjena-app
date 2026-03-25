@@ -1,0 +1,9 @@
+{
+  "name": "lotto-github-pages",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GitHub Pages compatible lotto ticket tracker",
+  "scripts": {
+    "build:data": "node scripts/build-data.js"
+  }
+}

@@ -76,3 +76,6 @@ window.SUPABASE_CONFIG = {
 - 처음 회원가입하면 이메일 인증 후 로그인해야 할 수 있습니다.
 - 비밀번호 재설정은 Supabase의 메일 링크를 통해 진행됩니다.
 - `supabase-config.js`를 실제 값으로 바꾸지 않으면 앱은 로컬 모드로만 동작합니다.
+
+
+- 2026-03-25: Auth redirect handling now supports token_hash-based email confirmations and password recovery callbacks for static GitHub Pages deployments.

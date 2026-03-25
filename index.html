@@ -570,7 +570,6 @@ async function initSupabaseAuth() {
         await hydrateTicketsFromCloud({ source: 'init', silent: true });
       } catch (e) {
         console.error('hydrateTicketsFromCloud on init failed:', e);
-        showToast('티켓을 불러오지 못했어요');
       }
     }
   } catch (e) {
@@ -585,16 +584,6 @@ async function initSupabaseAuth() {
     if (event === 'PASSWORD_RECOVERY') {
       resetMode = true;
       document.getElementById('reset-modal').classList.add('open');
-      return;
-    }
-
-    if (event === 'SIGNED_IN' && authUser) {
-      try {
-        await hydrateTicketsFromCloud({ source: 'init', silent: true });
-      } catch (e) {
-        console.error('hydrateTicketsFromCloud on sign-in failed:', e);
-        showToast('티켓을 불러오지 못했어요');
-      }
       return;
     }
 
@@ -652,6 +641,10 @@ function isInvalidEmailError(message = '') {
 
 function isExpiredLinkError(message = '') {
   return /expired|otp_expired|token has expired|flow state/i.test(message || '');
+}
+
+function isSessionMissingError(message = '') {
+  return /Auth session missing|session missing|refresh token not found|Invalid Refresh Token/i.test(message || '');
 }
 
 function normalizeAuthErrorMessage(error, mode = 'generic') {
@@ -814,7 +807,6 @@ async function signInWithEmail() {
   authUser = data?.user || data?.session?.user || authUser;
   hideResendPrompt();
   updateAuthUI();
-  goToAddPage();
   showToast('로그인 완료');
   try {
     await hydrateTicketsFromCloud({ source: 'signin', silent: false });
@@ -828,11 +820,13 @@ async function signOutUser() {
   if (!supabaseClient) return;
   try {
     const { error } = await supabaseClient.auth.signOut();
-    if (error) throw error;
+    if (error && !isSessionMissingError(error.message || error.name || '')) throw error;
   } catch (e) {
-    console.error('signOut failed:', e);
-    showToast('로그아웃에 실패했어요');
-    return;
+    if (!isSessionMissingError(e?.message || e?.name || '')) {
+      console.error('signOut failed:', e);
+      showToast('로그아웃에 실패했어요');
+      return;
+    }
   }
   authUser = null;
   hideResendPrompt();

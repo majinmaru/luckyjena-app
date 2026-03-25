@@ -517,37 +517,76 @@ async function initSupabaseAuth() {
     updateAuthUI();
     return;
   }
+  if (!window.supabase?.createClient) {
+    console.error('Supabase library missing');
+    showToast('Supabase 초기화에 실패했어요');
+    updateAuthUI();
+    return;
+  }
+
+  const cfg = getSupabaseConfig();
   try {
-    const cfg = getSupabaseConfig();
     supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey, {
       auth: { persistSession: true, autoRefreshToken: true }
     });
-    await handleAuthRedirectResult();
-    const { data } = await supabaseClient.auth.getSession();
-    authUser = data.session?.user || null;
-    if (authUser) await hydrateTicketsFromCloud();
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      authUser = session?.user || null;
-      if (event === 'PASSWORD_RECOVERY') {
-        resetMode = true;
-        document.getElementById('reset-modal').classList.add('open');
-      }
-      if (event === 'SIGNED_IN' && authUser) {
-        await hydrateTicketsFromCloud();
-      }
-      if (event === 'SIGNED_OUT') {
-        resetMode = false;
-        tickets = [];
-        renderTickets();
-        renderProbDropdown();
-      }
-      updateAuthUI();
-    });
   } catch (e) {
     console.error(e);
-    showToast('Supabase 연결에 실패했어요');
+    showToast('Supabase 초기화에 실패했어요');
+    updateAuthUI();
+    return;
   }
-  updateAuthUI();
+
+  try {
+    await handleAuthRedirectResult();
+  } catch (e) {
+    console.error('handleAuthRedirectResult failed:', e);
+  }
+
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    authUser = data.session?.user || null;
+    updateAuthUI();
+    if (authUser) {
+      try {
+        await hydrateTicketsFromCloud({ source: 'init', silent: true });
+      } catch (e) {
+        console.error('hydrateTicketsFromCloud on init failed:', e);
+        showToast('티켓을 불러오지 못했어요');
+      }
+    }
+  } catch (e) {
+    console.error('getSession failed:', e);
+    showToast('로그인 상태를 확인하지 못했어요');
+  }
+
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    authUser = session?.user || null;
+    updateAuthUI();
+
+    if (event === 'PASSWORD_RECOVERY') {
+      resetMode = true;
+      document.getElementById('reset-modal').classList.add('open');
+      return;
+    }
+
+    if (event === 'SIGNED_IN' && authUser) {
+      try {
+        await hydrateTicketsFromCloud({ source: 'init', silent: true });
+      } catch (e) {
+        console.error('hydrateTicketsFromCloud on sign-in failed:', e);
+        showToast('티켓을 불러오지 못했어요');
+      }
+      return;
+    }
+
+    if (event === 'SIGNED_OUT') {
+      resetMode = false;
+      tickets = [];
+      renderTickets();
+      renderProbDropdown();
+    }
+  });
 }
 
 function getAuthRedirectUrl() {
@@ -690,7 +729,7 @@ async function signInWithEmail() {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     if (isEmailConfirmError(error.message)) {
       await resendSignupEmail(true);
@@ -699,16 +738,27 @@ async function signInWithEmail() {
     showToast(normalizeAuthErrorMessage(error, 'signin'));
     return;
   }
-  await hydrateTicketsFromCloud();
+  authUser = data?.user || data?.session?.user || authUser;
   updateAuthUI();
   goToAddPage();
   showToast('로그인 완료');
+  try {
+    await hydrateTicketsFromCloud({ source: 'signin', silent: false });
+  } catch (e) {
+    console.error('hydrateTicketsFromCloud after sign-in failed:', e);
+    showToast('티켓을 불러오지 못했어요');
+  }
 }
 
 async function signOutUser() {
   if (!supabaseClient) return;
   const { error } = await supabaseClient.auth.signOut();
   if (error) { showToast(error.message); return; }
+  authUser = null;
+  tickets = [];
+  renderTickets();
+  renderProbDropdown();
+  updateAuthUI();
   showToast('로그아웃 완료');
   setTimeout(() => location.reload(), 450);
 }
@@ -799,12 +849,25 @@ async function replaceCloudTickets(rows) {
   if (insertErr) throw insertErr;
 }
 
-async function hydrateTicketsFromCloud() {
-  if (!supabaseClient || !authUser) return;
-  tickets = await fetchCloudTickets();
+async function hydrateTicketsFromCloud(options = {}) {
+  const { silent = false, source = 'load' } = options;
+  if (!supabaseClient || !authUser) return { status: 'skipped', count: 0 };
+  const cloudTickets = await fetchCloudTickets();
+  tickets = cloudTickets;
   persistTickets({ skipCloud: true });
   renderTickets();
   renderProbDropdown();
+
+  const count = cloudTickets.length;
+  const status = count ? 'loaded' : 'empty';
+  if (!silent) {
+    if (status === 'empty') {
+      showToast(source === 'signin' ? '저장된 티켓이 없어요' : '불러올 티켓이 없어요');
+    } else if (source === 'signin') {
+      showToast(`티켓 ${count}개를 불러왔어요`);
+    }
+  }
+  return { status, count };
 }
 
 function scheduleCloudSync() {

@@ -468,15 +468,24 @@ function ticketSignature(t) {
 //  TICKETS  (Supabase cloud)
 // ─────────────────────────────────────────
 let tickets = [];
+let syncChain = Promise.resolve();
+
+function deepCloneTickets(rows) {
+  return JSON.parse(JSON.stringify(rows || []));
+}
 
 function persistTickets(options = {}) {
-  if (!options.skipCloud) scheduleCloudSync();
+  if (options.skipCloud) return Promise.resolve({ skipped: true });
+  return scheduleCloudSync();
 }
 
 
 async function handleAuthRedirectResult() {
   if (!supabaseClient) return;
   const url = new URL(location.href);
+  if (location.hash === '#') {
+    history.replaceState({}, document.title, `${url.origin}${url.pathname}${url.search}`);
+  }
   const hashParams = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : location.hash);
   const queryParams = url.searchParams;
   const rawError = queryParams.get('error_description') || queryParams.get('error') || hashParams.get('error_description') || hashParams.get('error');
@@ -506,6 +515,9 @@ async function handleAuthRedirectResult() {
   queryParams.delete('error_description');
   const cleanUrl = `${url.origin}${url.pathname}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
   history.replaceState({}, document.title, cleanUrl);
+  if (location.hash) {
+    history.replaceState({}, document.title, cleanUrl);
+  }
 
   if (type === 'recovery') {
     resetMode = true;
@@ -814,8 +826,14 @@ async function signInWithEmail() {
 
 async function signOutUser() {
   if (!supabaseClient) return;
-  const { error } = await supabaseClient.auth.signOut();
-  if (error) { showToast(error.message); return; }
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+  } catch (e) {
+    console.error('signOut failed:', e);
+    showToast('로그아웃에 실패했어요');
+    return;
+  }
   authUser = null;
   hideResendPrompt();
   tickets = [];
@@ -823,7 +841,10 @@ async function signOutUser() {
   renderProbDropdown();
   updateAuthUI();
   showToast('로그아웃 완료');
-  setTimeout(() => location.reload(), 450);
+  setTimeout(() => {
+    const clean = `${location.origin}${location.pathname}${location.search}`;
+    location.replace(clean);
+  }, 350);
 }
 
 async function sendPasswordReset() {
@@ -945,21 +966,19 @@ async function hydrateTicketsFromCloud(options = {}) {
 }
 
 function scheduleCloudSync() {
-  if (suppressCloudSync || !supabaseClient || !authUser) return;
-  if (syncInFlight) { syncQueued = true; return; }
-  syncInFlight = true;
-  replaceCloudTickets(tickets)
-    .catch((e) => {
-      console.error(e);
-      showToast('클라우드 동기화에 실패했어요');
-    })
-    .finally(() => {
-      syncInFlight = false;
-      if (syncQueued) {
-        syncQueued = false;
-        scheduleCloudSync();
-      }
+  if (suppressCloudSync || !supabaseClient || !authUser) return Promise.resolve({ skipped: true });
+  const snapshot = deepCloneTickets(tickets);
+  syncChain = syncChain
+    .catch(() => undefined)
+    .then(async () => {
+      await replaceCloudTickets(snapshot);
+      return { synced: true, count: snapshot.length };
     });
+  return syncChain.catch((e) => {
+    console.error(e);
+    showToast('클라우드 동기화에 실패했어요');
+    throw e;
+  });
 }
 
 // ─────────────────────────────────────────
@@ -1209,7 +1228,7 @@ function openSaveModal() {
   document.getElementById('save-modal').classList.add('open');
 }
 
-function saveTicket() {
+async function saveTicket() {
   const sorted = [...selectedNums].sort((a, b) => a - b);
   const date   = document.getElementById('save-date').value;
   const memo   = document.getElementById('save-memo').value.trim();
@@ -1229,7 +1248,9 @@ function saveTicket() {
     });
     showToast('🎫 새 티켓 저장 완료!');
   }
-  persistTickets();
+  try {
+    await persistTickets();
+  } catch (e) { return; }
   closeModal('save-modal');
   clearSelection();
   document.getElementById('save-memo').value = '';
@@ -1387,13 +1408,14 @@ function closeConfirm() {
   pendingDeleteMode = 'single';
   document.getElementById('confirm-overlay').classList.remove('open');
 }
-function confirmDelete() {
+async function confirmDelete() {
   if (pendingDeleteMode === 'all') {
     tickets = [];
     expandedTicketId = null;
     closeConfirm();
     currentPage = 1;
-    persistTickets(); renderTickets();
+    try { await persistTickets(); } catch (e) { return; }
+    renderTickets();
     showToast('티켓 전체가 삭제됐어요');
     return;
   }
@@ -1404,7 +1426,8 @@ function confirmDelete() {
   document.getElementById('confirm-overlay').classList.remove('open');
   const tp = Math.ceil(tickets.length / PAGE_SIZE);
   if (currentPage > tp) currentPage = Math.max(1, tp);
-  persistTickets(); renderTickets();
+  try { await persistTickets(); } catch (e) { return; }
+  renderTickets();
   showToast('티켓이 삭제됐어요');
 }
 
@@ -1414,7 +1437,7 @@ function openBuyModal(id) {
   document.getElementById('buy-nums-preview').innerHTML = t.nums.map(n => miniball(n, 34)).join('');
   document.getElementById('buy-modal').classList.add('open');
 }
-function addBuy() {
+async function addBuy() {
   const date = document.getElementById('buy-date').value;
   const memo = document.getElementById('buy-memo').value.trim();
   if (!date) { showToast('날짜를 선택해주세요'); return; }
@@ -1422,7 +1445,8 @@ function addBuy() {
   t.purchases.push({ date, memo });
   t.purchases.sort((a, b) => b.date.localeCompare(a.date));
   t.updatedAt = Date.now();
-  persistTickets(); renderTickets(); closeModal('buy-modal');
+  try { await persistTickets(); } catch (e) { return; }
+  renderTickets(); closeModal('buy-modal');
   document.getElementById('buy-memo').value = '';
   showToast('🛒 구매 이력이 추가됐어요');
 }
@@ -1433,7 +1457,7 @@ function openWinModal(id) {
   document.getElementById('win-nums-preview').innerHTML = t.nums.map(n => miniball(n, 34)).join('');
   document.getElementById('win-modal').classList.add('open');
 }
-function addWin() {
+async function addWin() {
   const date = document.getElementById('win-date').value;
   const rank = parseInt(document.getElementById('win-rank').value);
   if (!date) { showToast('날짜를 선택해주세요'); return; }
@@ -1441,7 +1465,8 @@ function addWin() {
   t.wins.push({ date, rank });
   t.wins.sort((a, b) => b.date.localeCompare(a.date));
   t.updatedAt = Date.now();
-  persistTickets(); renderTickets(); closeModal('win-modal');
+  try { await persistTickets(); } catch (e) { return; }
+  renderTickets(); closeModal('win-modal');
   showToast(`🏆 ${rank}등 당첨 기록 완료!`);
 }
 

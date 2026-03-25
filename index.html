@@ -277,7 +277,7 @@
         <button class="auth-link-btn" onclick="resendSignupEmail()">인증 메일 다시 보내기</button>
         <button class="auth-link-btn" onclick="sendPasswordReset()">비밀번호 재설정</button>
       </div>
-      <div class="auth-note">회원가입 후 인증 메일을 확인한 뒤 로그인하면, 어느 기기나 브라우저에서도 같은 티켓을 이어서 볼 수 있어요.</div>
+      <div class="auth-note">회원가입 후 인증 메일을 확인한 뒤 로그인하면, 어느 기기나 브라우저에서도 같은 티켓을 이어서 볼 수 있어요. 이미 가입된 이메일이면 인증 메일을 다시 보냅니다.</div>
     </div>
 
     <div id="auth-logged-in" class="auth-hidden">
@@ -469,6 +469,48 @@ function persistTickets(options = {}) {
 }
 
 
+async function handleAuthRedirectResult() {
+  if (!supabaseClient) return;
+  const url = new URL(location.href);
+  const hashParams = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : location.hash);
+  const queryParams = url.searchParams;
+  const rawError = queryParams.get('error_description') || queryParams.get('error') || hashParams.get('error_description') || hashParams.get('error');
+  if (rawError) {
+    const decoded = decodeURIComponent(String(rawError)).replace(/\+/g, ' ');
+    console.error('Supabase auth redirect error:', decoded);
+    showToast(decoded.includes('expired') ? '인증 링크가 만료됐어요. 다시 보내기를 눌러주세요' : '인증 링크 확인에 실패했어요. 다시 시도해주세요');
+  }
+
+  const tokenHash = queryParams.get('token_hash');
+  const type = queryParams.get('type');
+  const otpTypes = ['email', 'recovery', 'invite', 'email_change'];
+  if (!tokenHash || !type || !otpTypes.includes(type)) return;
+
+  const { error } = await supabaseClient.auth.verifyOtp({ token_hash: tokenHash, type });
+  if (error) {
+    console.error('verifyOtp failed:', error);
+    showToast(type === 'recovery' ? '재설정 링크 확인에 실패했어요' : '이메일 인증에 실패했어요. 인증 메일을 다시 보내주세요');
+    return;
+  }
+
+  queryParams.delete('token_hash');
+  queryParams.delete('type');
+  queryParams.delete('next');
+  queryParams.delete('redirect_to');
+  queryParams.delete('error');
+  queryParams.delete('error_description');
+  const cleanUrl = `${url.origin}${url.pathname}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  history.replaceState({}, document.title, cleanUrl);
+
+  if (type === 'recovery') {
+    resetMode = true;
+    document.getElementById('reset-modal').classList.add('open');
+    showToast('비밀번호를 새로 설정해주세요');
+  } else {
+    showToast('이메일 인증이 완료됐어요. 이제 로그인할 수 있어요');
+  }
+}
+
 async function initSupabaseAuth() {
   const warning = document.getElementById('auth-config-warning');
   if (!hasSupabaseConfig()) {
@@ -481,6 +523,7 @@ async function initSupabaseAuth() {
     supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey, {
       auth: { persistSession: true, autoRefreshToken: true }
     });
+    await handleAuthRedirectResult();
     const { data } = await supabaseClient.auth.getSession();
     authUser = data.session?.user || null;
     if (authUser) await hydrateTicketsFromCloud();
@@ -527,6 +570,46 @@ function isEmailConfirmError(message = '') {
   return /Email not confirmed|email_not_confirmed|confirm your email|인증/i.test(message || '');
 }
 
+function isInvalidLoginError(message = '') {
+  return /Invalid login credentials|invalid_credentials|invalid login/i.test(message || '');
+}
+
+function isWeakPasswordError(message = '') {
+  return /Password should be at least|weak password|password/i.test(message || '');
+}
+
+function isRateLimitError(message = '') {
+  return /rate limit|security purposes|too many requests|over_email_send_rate_limit|request rate/i.test(message || '');
+}
+
+function isInvalidEmailError(message = '') {
+  return /invalid email|email address is invalid|Unable to validate email address/i.test(message || '');
+}
+
+function isExpiredLinkError(message = '') {
+  return /expired|otp_expired|token has expired|flow state/i.test(message || '');
+}
+
+function normalizeAuthErrorMessage(error, mode = 'generic') {
+  const raw = String(error?.message || error || '').trim();
+  if (!raw) {
+    if (mode === 'signup') return '회원가입에 실패했어요. 잠시 후 다시 시도해주세요';
+    if (mode === 'signin') return '로그인에 실패했어요. 잠시 후 다시 시도해주세요';
+    if (mode === 'reset') return '재설정 메일 전송에 실패했어요';
+    if (mode === 'resend') return '인증 메일 재전송에 실패했어요';
+    return '요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요';
+  }
+  if (isAlreadyRegisteredError(raw)) return '이미 가입된 이메일입니다';
+  if (isEmailConfirmError(raw)) return '이메일 인증이 필요해요. 인증 메일을 확인해주세요';
+  if (isInvalidLoginError(raw)) return '이메일 또는 비밀번호가 올바르지 않아요';
+  if (isInvalidEmailError(raw)) return '이메일 형식이 올바르지 않아요';
+  if (isRateLimitError(raw)) return '요청이 많아요. 잠시 후 다시 시도해주세요';
+  if (isExpiredLinkError(raw)) return '링크가 만료됐어요. 새 메일을 다시 요청해주세요';
+  if (mode === 'signup' && isWeakPasswordError(raw)) return '비밀번호 조건을 다시 확인해주세요';
+  if (/network|fetch/i.test(raw)) return '네트워크 연결을 확인해주세요';
+  return raw;
+}
+
 async function resendSignupEmail(fromExistingFlow = false) {
   if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return false; }
   const email = document.getElementById('auth-email').value.trim();
@@ -537,10 +620,11 @@ async function resendSignupEmail(fromExistingFlow = false) {
     options: { emailRedirectTo: getAuthRedirectUrl() }
   });
   if (error) {
-    showToast(fromExistingFlow ? '인증 메일 재전송에 실패했어요' : error.message);
+    const msg = normalizeAuthErrorMessage(error, 'resend');
+    showToast(fromExistingFlow ? `이미 가입된 이메일입니다 · ${msg}` : msg);
     return false;
   }
-  showToast(fromExistingFlow ? '기존 계정으로 인증 메일을 다시 보냈어요' : '인증 메일을 다시 보냈어요');
+  showToast(fromExistingFlow ? '이미 가입된 이메일입니다 · 인증 메일을 다시 보냈어요' : '인증 메일을 다시 보냈어요');
   return true;
 }
 
@@ -584,7 +668,7 @@ async function signUpWithEmail() {
       await resendSignupEmail(true);
       return;
     }
-    showToast(error.message);
+    showToast(normalizeAuthErrorMessage(error, 'signup'));
     return;
   }
   const identities = data?.user?.identities || [];
@@ -606,7 +690,7 @@ async function signInWithEmail() {
       await resendSignupEmail(true);
       return;
     }
-    showToast(error.message);
+    showToast(normalizeAuthErrorMessage(error, 'signin'));
     return;
   }
   showToast('로그인됐어요');
@@ -627,7 +711,7 @@ async function sendPasswordReset() {
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
     redirectTo: getAuthRedirectUrl()
   });
-  if (error) { showToast(error.message); return; }
+  if (error) { showToast(normalizeAuthErrorMessage(error, 'reset')); return; }
   showToast('비밀번호 재설정 메일을 보냈어요');
 }
 
@@ -639,7 +723,7 @@ async function updatePasswordFromRecovery() {
   if (pw.length < 8) { showToast('비밀번호는 8자 이상이어야 해요'); return; }
   if (pw !== confirm) { showToast('비밀번호 확인이 일치하지 않아요'); return; }
   const { error } = await supabaseClient.auth.updateUser({ password: pw });
-  if (error) { showToast(error.message); return; }
+  if (error) { showToast(normalizeAuthErrorMessage(error, 'reset')); return; }
   document.getElementById('reset-password').value = '';
   document.getElementById('reset-password-confirm').value = '';
   closeModal('reset-modal');

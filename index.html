@@ -264,7 +264,7 @@
       <div class="auth-state-box" id="auth-state-box">
         <div class="auth-state-label"><span class="auth-dot off" id="auth-dot"></span><span id="auth-status-text">로그인 필요</span></div>
         <div class="auth-state-title">로그인 후 바로 시작할 수 있어요</div>
-        <div class="auth-state-desc">티켓 저장과 분석은 로그인한 계정 기준으로 자동 저장됩니다.</div>
+        <div class="auth-state-desc">번호 저장과 분석은 로그인한 계정에 자동 저장됩니다.</div>
       </div>
       <div class="auth-grid">
         <div class="form-group" style="margin-bottom:10px"><label class="form-label">이메일</label><input type="email" class="form-input" id="auth-email" placeholder="you@example.com"></div>
@@ -274,11 +274,16 @@
         <button class="btn btn-gold" style="font-size:12px;padding:10px 14px" onclick="signInWithEmail()">로그인</button>
         <button class="btn btn-outline" style="font-size:12px;padding:10px 14px" onclick="signUpWithEmail()">회원가입</button>
       </div>
+      <div id="auth-resend-wrap" class="auth-state-box auth-hidden" style="margin-top:12px;padding:12px 14px">
+        <div class="auth-state-title" style="font-size:14px;margin-bottom:4px">인증 메일 확인이 필요해요</div>
+        <div class="auth-state-desc" id="auth-resend-text">이메일 인증 후 로그인해주세요.</div>
+        <div class="auth-actions" style="margin-top:10px">
+          <button class="btn btn-outline" style="font-size:12px;padding:9px 12px" onclick="resendSignupEmail()">인증 메일 다시 보내기</button>
+        </div>
+      </div>
       <div class="auth-links">
-        <button class="auth-link-btn" onclick="resendSignupEmail()">인증 메일 다시 보내기</button>
         <button class="auth-link-btn" onclick="sendPasswordReset()">비밀번호 재설정</button>
       </div>
-      <div class="auth-note">이미 가입된 이메일이면 안내 후 인증 메일을 다시 보냅니다.</div>
     </div>
 
     <div id="auth-logged-in" class="auth-hidden">
@@ -429,6 +434,7 @@ let syncInFlight = false;
 let syncQueued = false;
 let suppressCloudSync = false;
 let resetMode = false;
+let authPendingEmail = '';
 
 function getSupabaseConfig() {
   return window.SUPABASE_CONFIG || { url: '', anonKey: '' };
@@ -647,7 +653,7 @@ function normalizeAuthErrorMessage(error, mode = 'generic') {
   }
   if (isAlreadyRegisteredError(raw)) return '이미 가입된 이메일입니다';
   if (isEmailConfirmError(raw)) return '이메일 인증이 필요해요. 인증 메일을 확인해주세요';
-  if (isInvalidLoginError(raw)) return '이메일 또는 비밀번호가 올바르지 않아요';
+  if (isInvalidLoginError(raw)) return '비밀번호가 올바르지 않아요';
   if (isInvalidEmailError(raw)) return '이메일 형식이 올바르지 않아요';
   if (isRateLimitError(raw)) return '요청이 많아요. 잠시 후 다시 시도해주세요';
   if (isExpiredLinkError(raw)) return '링크가 만료됐어요. 새 메일을 다시 요청해주세요';
@@ -674,6 +680,39 @@ async function resendSignupEmail(fromExistingFlow = false) {
   return true;
 }
 
+
+function setPendingEmail(email = '') {
+  authPendingEmail = (email || '').trim().toLowerCase();
+}
+
+function showResendPrompt(message, email = '') {
+  if (email) {
+    setPendingEmail(email);
+    const emailInput = document.getElementById('auth-email');
+    if (emailInput) emailInput.value = email;
+  }
+  const wrap = document.getElementById('auth-resend-wrap');
+  const textEl = document.getElementById('auth-resend-text');
+  if (textEl && message) textEl.textContent = message;
+  wrap?.classList.remove('auth-hidden');
+}
+
+function hideResendPrompt() {
+  const wrap = document.getElementById('auth-resend-wrap');
+  wrap?.classList.add('auth-hidden');
+}
+
+async function checkRegisteredEmail(email) {
+  if (!supabaseClient) return { ok: false, exists: false, error: new Error('Supabase client not ready') };
+  try {
+    const { data, error } = await supabaseClient.rpc('email_exists', { target_email: email });
+    if (error) return { ok: false, exists: false, error };
+    return { ok: true, exists: !!data, error: null };
+  } catch (error) {
+    return { ok: false, exists: false, error };
+  }
+}
+
 function updateAuthUI() {
   const loggedIn = !!authUser;
   const dot = document.getElementById('auth-dot');
@@ -693,15 +732,27 @@ function updateAuthUI() {
   if (ticketsShell) ticketsShell.style.display = loggedIn ? '' : 'none';
   if (emailEl) emailEl.textContent = authUser?.email || '-';
   if (configWarning) configWarning.classList.toggle('auth-hidden', hasSupabaseConfig());
+  if (loggedIn) {
+    hideResendPrompt();
+    setPendingEmail('');
+  }
   if (!loggedIn) forceOpenLogin(true);
 }
 
 async function signUpWithEmail() {
   if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return; }
-  const email = document.getElementById('auth-email').value.trim();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
   if (password.length < 8) { showToast('비밀번호는 8자 이상이어야 해요'); return; }
+
+  const existsCheck = await checkRegisteredEmail(email);
+  if (existsCheck.ok && existsCheck.exists) {
+    hideResendPrompt();
+    showToast('이미 가입된 이메일입니다');
+    return;
+  }
+
   const redirectTo = getAuthRedirectUrl();
   const { data, error } = await supabaseClient.auth.signUp({
     email,
@@ -709,36 +760,47 @@ async function signUpWithEmail() {
     options: { emailRedirectTo: redirectTo }
   });
   if (error) {
-    if (isAlreadyRegisteredError(error.message)) {
-      await resendSignupEmail(true);
-      return;
-    }
     showToast(normalizeAuthErrorMessage(error, 'signup'));
     return;
   }
+
   const identities = data?.user?.identities || [];
   if (!data?.session && identities.length === 0) {
-    await resendSignupEmail(true);
+    showToast('이미 가입된 이메일입니다');
     return;
   }
-  showToast('가입 메일을 보냈어요. 인증 후 로그인해주세요');
+
+  setPendingEmail(email);
+  showResendPrompt('가입 메일을 보냈어요. 인증을 마친 뒤 로그인해주세요.', email);
+  showToast('가입 메일을 보냈어요');
 }
 
 async function signInWithEmail() {
   if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return; }
-  const email = document.getElementById('auth-email').value.trim();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showToast('이메일과 비밀번호를 입력해주세요'); return; }
+
+  const existsCheck = await checkRegisteredEmail(email);
+  if (existsCheck.ok && !existsCheck.exists) {
+    hideResendPrompt();
+    showToast('가입된 계정이 없어요');
+    return;
+  }
+
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     if (isEmailConfirmError(error.message)) {
-      await resendSignupEmail(true);
+      setPendingEmail(email);
+      showResendPrompt('이메일 인증 후 로그인할 수 있어요.', email);
+      showToast('이메일 인증이 필요해요');
       return;
     }
     showToast(normalizeAuthErrorMessage(error, 'signin'));
     return;
   }
   authUser = data?.user || data?.session?.user || authUser;
+  hideResendPrompt();
   updateAuthUI();
   goToAddPage();
   showToast('로그인 완료');
@@ -755,6 +817,7 @@ async function signOutUser() {
   const { error } = await supabaseClient.auth.signOut();
   if (error) { showToast(error.message); return; }
   authUser = null;
+  hideResendPrompt();
   tickets = [];
   renderTickets();
   renderProbDropdown();
@@ -765,8 +828,19 @@ async function signOutUser() {
 
 async function sendPasswordReset() {
   if (!supabaseClient) { showToast('Supabase 설정이 먼저 필요해요'); return; }
-  const email = document.getElementById('auth-email').value.trim();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
   if (!email) { showToast('비밀번호 재설정용 이메일을 입력해주세요'); return; }
+
+  const existsCheck = await checkRegisteredEmail(email);
+  if (existsCheck.ok && !existsCheck.exists) {
+    showToast('가입된 계정이 없어요');
+    return;
+  }
+  if (!existsCheck.ok) {
+    showToast('계정 확인에 실패했어요. 잠시 후 다시 시도해주세요');
+    return;
+  }
+
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
     redirectTo: getAuthRedirectUrl()
   });

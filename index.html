@@ -803,30 +803,29 @@ async function signInWithEmail() {
     return;
   }
   authUser = data?.user || data?.session?.user || authUser;
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (!sessionError && sessionData?.session?.user) {
+      authUser = sessionData.session.user;
+    }
+  } catch (sessionRefreshError) {
+    console.error('getSession after sign-in failed:', sessionRefreshError);
+  }
+
   hideResendPrompt();
   updateAuthUI();
   showToast('로그인 완료');
-  let result = await hydrateTicketsFromCloud({ source: 'signin', silent: true });
-  if (result?.status === 'error') {
-    console.error('hydrateTicketsFromCloud after sign-in failed:', result.error);
-    try {
-      const retryTickets = await fetchCloudTickets();
-      tickets = retryTickets;
-      persistTickets({ skipCloud: true });
-      renderTickets();
-      renderProbDropdown();
-      result = { status: retryTickets.length ? 'loaded' : 'empty', count: retryTickets.length };
-    } catch (retryError) {
-      console.error('fetchCloudTickets retry after sign-in failed:', retryError);
-      result = { status: 'error', count: 0, error: retryError };
-    }
-  }
 
-  if (result?.status === 'loaded') {
-    showToast(`티켓 ${result.count}개를 불러왔어요`);
-  } else if (result?.status === 'empty') {
-    showToast('저장된 티켓이 없어요');
-  } else {
+  try {
+    const loadedTickets = await fetchCloudTickets();
+    tickets = loadedTickets;
+    persistTickets({ skipCloud: true });
+    renderTickets();
+    renderProbDropdown();
+    showToast(loadedTickets.length ? `티켓 ${loadedTickets.length}개를 불러왔어요` : '저장된 티켓이 없어요');
+  } catch (loadError) {
+    console.error('fetchCloudTickets after sign-in failed:', loadError);
     showToast('티켓을 불러오지 못했어요');
   }
 }
